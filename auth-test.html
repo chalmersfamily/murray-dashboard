@@ -121,13 +121,29 @@ const loginRequest = {
 
 };
 
-const msalInstance =
-    new msal.PublicClientApplication(
-        msalConfig
-    );
+let msalInstance;
+
+async function initializeMsal(){
+
+    msalInstance =
+        await msal.PublicClientApplication.createPublicClientApplication(
+            msalConfig
+        );
+
+}
+
+initializeMsal();
 
 async function signIn(){
+if(!msalInstance){
 
+    alert(
+        "MSAL not initialized yet. Please wait a second and try again."
+    );
+
+    return;
+
+}
     try{
 
         const response =
