@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Murray's Plan Auth Test</title>
+<title>Murray's Plan Auth Test v1.1</title>
 
 <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 
 <style>
-
 body{
     background:#0f172a;
     color:white;
@@ -36,14 +35,13 @@ button{
     margin-right:10px;
 }
 
-button:hover{
-    opacity:.9;
-}
-
 .success{
     color:#22c55e;
 }
 
+.warning{
+    color:#fbbf24;
+}
 </style>
 
 </head>
@@ -64,8 +62,8 @@ button:hover{
         🚪 Sign Out
     </button>
 
-    <p id="status">
-        Not signed in
+    <p id="status" class="warning">
+        Initializing Microsoft Authentication...
     </p>
 
 </div>
@@ -85,12 +83,14 @@ button:hover{
     <h2>Version</h2>
 
     <p>
-        Auth Test v1.0
+        Auth Test v1.1
     </p>
 
 </div>
 
 <script>
+
+let msalInstance = null;
 
 const msalConfig = {
 
@@ -103,108 +103,4 @@ const msalConfig = {
         "https://login.microsoftonline.com/common",
 
         redirectUri:
-        "https://chalmersfamily.github.io/murray-dashboard/"
-
-    }
-
-};
-
-const loginRequest = {
-
-    scopes: [
-
-        "User.Read",
-        "Tasks.Read",
-        "Calendars.Read"
-
-    ]
-
-};
-
-let msalInstance;
-
-async function initializeMsal(){
-
-    msalInstance =
-        await msal.PublicClientApplication.createPublicClientApplication(
-            msalConfig
-        );
-
-}
-
-initializeMsal();
-
-async function signIn(){
-if(!msalInstance){
-
-    alert(
-        "MSAL not initialized yet. Please wait a second and try again."
-    );
-
-    return;
-
-}
-    try{
-
-        const response =
-            await msalInstance.loginPopup(
-                loginRequest
-            );
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "<span class='success'>✅ Signed In</span>";
-
-        document.getElementById(
-            "accountInfo"
-        ).innerHTML =
-            "<strong>Name:</strong> " +
-            response.account.name +
-            "<br>" +
-            "<strong>Email:</strong> " +
-            response.account.username;
-
-    }
-    catch(error){
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "❌ " + error.message;
-
-    }
-
-}
-
-async function signOut(){
-
-    const accounts =
-        msalInstance.getAllAccounts();
-
-    if(accounts.length){
-
-        await msalInstance.logoutPopup({
-
-            account: accounts[0]
-
-        });
-
-    }
-
-    document.getElementById(
-        "status"
-    ).innerHTML =
-        "Not signed in";
-
-    document.getElementById(
-        "accountInfo"
-    ).innerHTML =
-        "No account connected.";
-
-}
-
-</script>
-
-</body>
-</html>
+        "https://chalmersfamily.github.io/murray-dashboard
