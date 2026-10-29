@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">f
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Murray OS v1.1</title>
+<title>Murray's Plan v1.2</title>
 
 <style>
 
@@ -82,6 +82,25 @@ body{
     margin-top:20px;
 }
 
+.subtitle{
+    color:#94a3b8;
+    margin-top:-10px;
+    margin-bottom:20px;
+}
+
+button{
+    background:#38bdf8;
+    color:white;
+    border:none;
+    border-radius:6px;
+    padding:8px 12px;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.9;
+}
+
 @media(max-width:768px){
 
     .top-row,
@@ -94,6 +113,7 @@ body{
     .bottom-card{
         margin-bottom:15px;
     }
+
 }
 
 </style>
@@ -101,7 +121,11 @@ body{
 
 <body>
 
-<h1>Murray OS</h1>
+<h1>Murray's Plan</h1>
+
+<div class="subtitle">
+    Your personal dashboard for today's priorities
+</div>
 
 <div class="card">
 
@@ -120,137 +144,5 @@ body{
 <div class="top-row">
 
     <div class="top-card">
-        <h3>My Day</h3>
-        <div class="big">4</div>
-        <p>Tasks</p>
-    </div>
 
-    <div class="top-card">
-        <h3>Important</h3>
-        <div class="big">2</div>
-        <p>Priority Items</p>
-    </div>
-
-    <div class="top-card">
-        <h3>Calendar</h3>
-        <div class="big">3</div>
-        <p>Appointments</p>
-    </div>
-
-    <div class="top-card">
-        <h3>Focus</h3>
-        <div class="big">34</div>
-        <p>Days Remaining</p>
-    </div>
-
-</div>
-
-<div class="main-row">
-
-    <div class="tasks-panel card">
-
-        <h2>Today's Tasks</h2>
-
-        <p>☐ Review Garmin workout data</p>
-        <p>☐ Pay Visa bill</p>
-        <p>☐ Update project tracker</p>
-        <p>☐ Walk the dog</p>
-
-    </div>
-
-    <div class="calendar-panel card">
-
-        <h2>Today's Calendar</h2>
-
-        <p>09:00 Appointment</p>
-        <p>13:00 Lunch</p>
-        <p>16:00 Banking</p>
-
-    </div>
-
-</div>
-
-<div class="bottom-row">
-
-    <div class="bottom-card clickable"
-     onclick="openArea('projects')">
-
-       <h3>📁 Projects</h3>
-
-        <p>12 Active</p>
-
-        <p>3 Need Attention</p>
-
-        <div class="link">
-            Open →
-        </div>
-
-    </div>
-
-    <div class="bottom-card clickable"
-     onclick="openArea('ideas')">
-
-
-        <h3>💡 Ideas</h3>
-
-        <p>24 Captured</p>
-
-        <p>5 Unreviewed</p>
-
-        <div class="link">
-            Open →
-        </div>
-
-    </div>
-
-    <div class="bottom-card clickable"
-     onclick="openArea('training')">
-
-        <h3>🚣 Training</h3>
-
-        <p>4 Sessions</p>
-
-        <p>This Week</p>
-
-        <div class="link">
-            Open →
-        </div>
-
-    </div>
-
-    <div class="bottom-card clickable"
-     onclick="openArea('life')">
-
-       <h3>🌎 Life</h3>
-
-        <p>Travel</p>
-
-        <p>Dog Walks</p>
-
-        <div class="link">
-            Open →
-        </div>
-
-    </div>
-
-</div>
-
-<div class="card">
-
-    <h2>Accomplishments</h2>
-
-    <p>18 tasks completed this week</p>
-
-    <p>Productive streak: 6 days</p>
-
-</div>
-
-<div class="version">
-
-    Murray OS v1.1<br>
-    Personal Operating System Layout
-
-</div>
-
-</body>
-</html>
+   
