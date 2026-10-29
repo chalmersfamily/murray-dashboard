@@ -1,2 +1,108 @@
-<h1>Murray Dashboard</h1>
-<p>Success! GitHub Pages is almost ready.</p>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Murray Dashboard</title>
+
+<style>
+body{
+    font-family:Segoe UI,Arial,sans-serif;
+    background:#0f172a;
+    color:white;
+    margin:0;
+    padding:20px;
+}
+
+.header{
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:15px;
+}
+
+.card{
+    background:#1e293b;
+    border-radius:16px;
+    padding:20px;
+}
+
+.big{
+    font-size:42px;
+    font-weight:bold;
+    color:#38bdf8;
+}
+
+.task{
+    padding:8px 0;
+    border-bottom:1px solid #334155;
+}
+
+.progress{
+    background:#334155;
+    border-radius:10px;
+    overflow:hidden;
+    height:12px;
+}
+
+.bar{
+    background:#22c55e;
+    height:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Murray Dashboard</h1>
+    <p>Your daily command center</p>
+</div>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>My Day</h3>
+        <div class="big">4</div>
+        <div>tasks remaining</div>
+    </div>
+
+    <div class="card">
+        <h3>Important</h3>
+        <div class="big">2</div>
+        <div>priority items</div>
+    </div>
+
+    <div class="card">
+        <h3>Calendar Today</h3>
+        <div class="big">3</div>
+        <div>appointments</div>
+    </div>
+
+    <div class="card">
+        <h3>Focus Countdown</h3>
+        <div class="big">34</div>
+        <div>days remaining</div>
+    </div>
+
+</div>
+
+<br>
+
+<div class="grid">
+
+<div class="card">
+<h2>Today's Tasks</h2>
+
+<div class="task">☐ Book travel insurance</div>
+<div class="task">☐ Review Garmin data</div>
+<div class="task">☐ Pay Visa bill</div>
+<div class="task">☐ Schedule dentist</div>
+
+</div>
+
+<div class="card">
+<h2>Today's Calendar</h2>
+
