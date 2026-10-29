@@ -2,7 +2,9 @@
 <html>
 <head>
 <title>Murray OS</title>
+
 <style>
+
 body{
     background:#0f172a;
     color:white;
@@ -22,8 +24,24 @@ body{
     color:#38bdf8;
     font-weight:bold;
 }
+
+.top-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+    margin-bottom:15px;
+}
+
+@media(max-width:800px){
+    .top-grid{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
 </style>
+
 </head>
+
 <body>
 
 <h1>Murray OS</h1>
@@ -33,15 +51,15 @@ body{
     <p>4 tasks remaining • 3 appointments today</p>
 </div>
 
-<div class="card">
-    <h2>My Day</h2>
-    <div class="big">4</div>
-</div>
+<div class="top-grid">
 
-<div class="card">
-    <h2>Projects</h2>
-    <p>12 active projects</p>
-</div>
+    <div class="card">
+        <h3>My Day</h3>
+        <div class="big">4</div>
+        <p>tasks</p>
+    </div>
 
-</body>
-</html>
+    <div class="card">
+        <h3>Important</h3>
+        <div class="big">2</div>
+        <p>priority items
