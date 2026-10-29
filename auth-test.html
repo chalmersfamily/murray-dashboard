@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Murray's Plan Auth Test</title>
+
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+<style>
+
+body{
+    background:#0f172a;
+    color:white;
+    font-family:Arial,sans-serif;
+    max-width:800px;
+    margin:auto;
+    padding:30px;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:15px;
+}
+
+button{
+    background:#38bdf8;
+    color:white;
+    border:none;
+    border-radius:6px;
+    padding:10px 15px;
+    cursor:pointer;
+    margin-right:10px;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.success{
+    color:#22c55e;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Murray's Plan</h1>
+
+<div class="card">
+
+    <h2>Microsoft Authentication Test</h2>
+
+    <button onclick="signIn()">
+        🔐 Sign In
+    </button>
+
+    <button onclick="signOut()">
+        🚪 Sign Out
+    </button>
+
+    <p id="status">
+        Not signed in
+    </p>
+
+</div>
+
+<div class="card">
+
+    <h2>Account Information</h2>
+
+    <p id="accountInfo">
+        No account connected.
+    </p>
+
+</div>
+
+<div class="card">
+
+    <h2>Version</h2>
+
+    <p>
+        Auth Test v1.0
+    </p>
+
+</div>
+
+<script>
+
+const msalConfig = {
+
+    auth: {
+
+        clientId:
+        "7a533e96-1dc4-4f59-98ea-2564c7b4d0e1",
+
+        authority:
+        "https://login.microsoftonline.com/common",
+
+        redirectUri:
+        "https://chalmersfamily.github.io/murray-dashboard/"
+
+    }
+
+};
+
+const loginRequest = {
+
+    scopes: [
+
+        "User.Read",
+        "Tasks.Read",
+        "Calendars.Read"
+
+    ]
+
+};
+
+const msalInstance =
+    new msal.PublicClientApplication(
+        msalConfig
+    );
+
+async function signIn(){
+
+    try{
+
+        const response =
+            await msalInstance.loginPopup(
+                loginRequest
+            );
+
+        document.getElementById(
+            "status"
+        ).innerHTML =
+            "<span class='success'>✅ Signed In</span>";
+
+        document.getElementById(
+            "accountInfo"
+        ).innerHTML =
+            "<strong>Name:</strong> " +
+            response.account.name +
+            "<br>" +
+            "<strong>Email:</strong> " +
+            response.account.username;
+
+    }
+    catch(error){
+
+        document.getElementById(
+            "status"
+        ).innerHTML =
+            "❌ " + error.message;
+
+    }
+
+}
+
+async function signOut(){
+
+    const accounts =
+        msalInstance.getAllAccounts();
+
+    if(accounts.length){
+
+        await msalInstance.logoutPopup({
+
+            account: accounts[0]
+
+        });
+
+    }
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+        "Not signed in";
+
+    document.getElementById(
+        "accountInfo"
+    ).innerHTML =
+        "No account connected.";
+
+}
+
+</script>
+
+</body>
+</html>
