@@ -266,10 +266,12 @@ try {
             ]
         });
 
-    document.getElementById(
-        "status"
-    ).innerHTML =
-        result.account.username;
+        document.getElementById(
+    "status"
+).innerHTML =
+    result.account.username;
+
+await loadDashboard();
 
     
 
@@ -328,6 +330,95 @@ await loadCalendar(headers);
 
 await loadTodo(headers);
 }
+
+async function loadCalendar(headers) {
+
+const now = new Date();
+
+const nextWeek = new Date();
+
+nextWeek.setDate(
+    now.getDate() + 7
+);
+
+const response =
+    await fetch(
+        `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now.toISOString()}&endDateTime=${nextWeek.toISOString()}`,
+        {
+            headers
+        }
+    );
+
+const data =
+    await response.json();
+
+let html = "";
+
+data.value
+    .slice(0,10)
+    .forEach(event => {
+
+        html += `
+            <p>
+                <strong>${event.subject}</strong>
+            </p>
+        `;
+    });
+
+document.getElementById(
+    "calendarContainer"
+).innerHTML =
+    html || "No events found.";
+}
+async function loadTodo(headers) {
+
+const listsResponse =
+    await fetch(
+        "https://graph.microsoft.com/v1.0/me/todo/lists",
+        {
+            headers
+        }
+    );
+
+const listsData =
+    await listsResponse.json();
+
+let html = "";
+
+for(const list of listsData.value){
+
+    const tasksResponse =
+        await fetch(
+            `https://graph.microsoft.com/v1.0/me/todo/lists/${list.id}/tasks`,
+            {
+                headers
+            }
+        );
+
+    const tasksData =
+        await tasksResponse.json();
+
+    const activeTasks =
+        tasksData.value.filter(
+            task =>
+                task.status !== "completed"
+        );
+
+    activeTasks.forEach(task => {
+
+        html += `
+            <p>☐ ${task.title}</p>
+        `;
+
+    });
+}
+
+document.getElementById(
+    "tasksContainer"
+).innerHTML =
+    html || "No active tasks.";
+}
+
 startup();
        
 </script> 
