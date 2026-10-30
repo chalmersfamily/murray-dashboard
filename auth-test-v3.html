@@ -102,7 +102,7 @@ async function startup() {
 
 async function signIn() {
 
-    if(!initialized) {
+    if (!initialized) {
 
         document.getElementById("status").innerHTML =
             "Still initializing";
@@ -135,17 +135,92 @@ async function signIn() {
     }
 }
 
+async function testGraph() {
+
+    try {
+
+        const accounts =
+            pca.getAllAccounts();
+
+        if(accounts.length === 0) {
+
+            document.getElementById("output").innerHTML =
+                "Please sign in first.";
+
+            return;
+        }
+
+        const tokenResponse =
+            await pca.acquireTokenSilent({
+                scopes: ["User.Read"],
+                account: accounts[0]
+            });
+
+        const response =
+            await fetch(
+                "https://graph.microsoft.com/v1.0/me",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            tokenResponse.accessToken
+                    }
+                }
+            );
+
+        const user =
+            await response.json();
+
+        document.getElementById("output").innerHTML =
+            `
+            <h3>Graph Test Success</h3>
+            <p><strong>Name:</strong> ${user.displayName}</p>
+            <p><strong>Email:</strong> ${user.mail || user.userPrincipalName}</p>
+            `;
+
+    }
+    catch(err) {
+
+        console.error(err);
+
+        document.getElementById("output").innerHTML =
+            "Graph Error:<br>" + err;
+    }
+}
+
 async function testCalendar() {
 
     try {
 
-        const accounts = pca.getAllAccounts();
+        const accounts =
+            pca.getAllAccounts();
 
-        const tokenResponse =
-            await pca.acquireTokenSilent({
-                scopes: ["Calendars.Read"],
-                account: accounts[0]
-            });
+        if(accounts.length === 0) {
+
+            document.getElementById("output").innerHTML =
+                "Please sign in first.";
+
+            return;
+        }
+
+        let tokenResponse;
+
+        try {
+
+            tokenResponse =
+                await pca.acquireTokenSilent({
+                    scopes: ["Calendars.Read"],
+                    account: accounts[0]
+                });
+
+        }
+        catch {
+
+            tokenResponse =
+                await pca.acquireTokenPopup({
+                    scopes: ["Calendars.Read"]
+                });
+        }
 
         const response =
             await fetch(
@@ -153,34 +228,48 @@ async function testCalendar() {
                 {
                     headers: {
                         Authorization:
-                            "Bearer " + tokenResponse.accessToken
+                            "Bearer " +
+                            tokenResponse.accessToken
                     }
                 }
             );
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
         let html =
             "<h3>Upcoming Events</h3>";
 
-        data.value.forEach(event => {
+        if(!data.value || data.value.length === 0) {
 
             html +=
-                `<p>
+                "<p>No events found.</p>";
+        }
+        else {
+
+            data.value.forEach(event => {
+
+                html +=
+                    `
+                    <p>
                     <strong>${event.subject}</strong><br>
                     ${event.start.dateTime}
-                 </p>`;
-        });
+                    </p>
+                    `;
+
+            });
+        }
 
         document.getElementById("output").innerHTML =
             html;
+
     }
     catch(err) {
 
         console.error(err);
 
         document.getElementById("output").innerHTML =
-            err;
+            "Calendar Error:<br>" + err;
     }
 }
 
