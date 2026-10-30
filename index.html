@@ -1,2 +1,196 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Murray's Big Plan v1.4</title><style>body{background:#0f172a;color:white;font-family:Arial,sans-serif;max-width:1200px;margin:auto;padding:20px}.card{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:15px}.big{font-size:36px;color:#38bdf8;font-weight:bold}.top-row,.main-row,.bottom-row{display:flex;gap:15px;margin-bottom:15px}.top-card,.bottom-card{flex:1;background:#1e293b;border-radius:12px;padding:15px}.bottom-card{cursor:pointer}.bottom-card:hover{background:#2a3a50}.tasks-panel{flex:2}.calendar-panel{flex:1}.link{color:#38bdf8;font-weight:bold}.version{text-align:center;color:#94a3b8;font-size:12px;margin-top:20px}.subtitle{color:#94a3b8}.gear{float:right}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7)}.modal-content{background:#1e293b;margin:5% auto;padding:20px;max-width:700px;border-radius:12px}input{width:100%;margin:5px 0 12px;padding:8px}button{padding:8px 12px}@media(max-width:768px){.top-row,.main-row,.bottom-row{display:block}.top-card,.bottom-card{margin-bottom:15px}}</style></head><body><h1>Murray's Big Plan <button class="gear" onclick="openSettings()">⚙️</button></h1><div class="subtitle">Your personal dashboard for today's priorities</div><div class="card"><h2>Today's Briefing</h2><p>4 tasks remaining • 3 appointments today • 0 overdue items</p></div><div class="top-row"><div class="top-card"><h3>My Day</h3><div class="big">4</div></div><div class="top-card"><h3>Important</h3><div class="big">2</div></div><div class="top-card"><h3>Calendar</h3><div class="big">3</div></div><div class="top-card"><h3>Countdown</h3><div id="countdownName">Belgium Trip</div><div class="big" id="countdownDays">34</div><button onclick="editCountdown()">Edit</button></div></div><div class="main-row"><div class="tasks-panel card"><h2>Today's Tasks</h2><p>☐ Review Garmin workout data</p><p>☐ Pay Visa bill</p></div><div class="calendar-panel card"><h2>Today's Calendar</h2><p>09:00 Appointment</p><p>13:00 Lunch</p></div></div><div class="bottom-row"><div class="bottom-card" onclick="openLink('projectsUrl')"><h3>📁 Projects</h3><div class="link">Open →</div></div><div class="bottom-card" onclick="openLink('ideasUrl')"><h3>💡 Ideas</h3><div class="link">Open →</div></div><div class="bottom-card" onclick="openLink('trainingUrl')"><h3>🚣 Training</h3><div class="link">Open →</div></div><div class="bottom-card" onclick="openLink('lifeUrl')"><h3>🌎 Life</h3><div class="link">Open →</div></div></div><div class="card"><h2>Accomplishments</h2><p>18 tasks completed this week</p></div><div class="version">Murray's Big Plan v1.4<br>Settings Popup • Saved Navigation</div><div id="settingsModal" class="modal"><div class="modal-content"><h2>⚙️ Settings</h2><label>Projects URL</label><input id="projectsUrl"><label>Ideas URL</label><input id="ideasUrl"><label>Training URL</label><input id="trainingUrl"><label>Life URL</label><input id="lifeUrl"><button onclick="saveSettings()">Save</button> <button onclick="closeSettings()">Close</button></div></div><script>const defaults={projectsUrl:'https://mask-projecttrack.pages.dev/',ideasUrl:'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas',trainingUrl:'https://winter-fit.navybetta5.chatgpt.site/',lifeUrl:'https://job-jar.navybetta5.chatgpt.site/'};function loadSettings(){for(let k in defaults){document.getElementById(k).value=localStorage.getItem(k)||defaults[k];}}function saveSettings(){for(let k in defaults){localStorage.setItem(k,document.getElementById(k).value);}alert('Saved');}function openLink(k){window.open(localStorage.getItem(k)||defaults[k],'_blank');}function openSettings(){loadSettings();document.getElementById('settingsModal').style.display='block';}function closeSettings(){document.getElementById('settingsModal').style.display='none';}function editCountdown(){let n=prompt('Countdown Name',localStorage.getItem('countdownName')||document.getElementById('countdownName').innerText);if(n){localStorage.setItem('countdownName',n);document.getElementById('countdownName').innerText=n;}let d=prompt('Days Remaining',localStorage.getItem('countdownDays')||document.getElementById('countdownDays').innerText);if(d){localStorage.setItem('countdownDays',d);document.getElementById('countdownDays').innerText=d;}}window.onload=function(){if(localStorage.getItem('countdownName'))document.getElementById('countdownName').innerText=localStorage.getItem('countdownName');if(localStorage.getItem('countdownDays'))document.getElementById('countdownDays').innerText=localStorage.getItem('countdownDays');};</script></body></html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Murray's Big Plan v1.4</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px
+        }
+
+        .big {
+            font-size: 36px;
+            color: #38bdf8;
+            font-weight: bold
+        }
+
+        .top-row,
+        .main-row,
+        .bottom-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px
+        }
+
+        .top-card,
+        .bottom-card {
+            flex: 1;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 15px
+        }
+
+        .bottom-card {
+            cursor: pointer
+        }
+
+        .bottom-card:hover {
+            background: #2a3a50
+        }
+
+        .tasks-panel {
+            flex: 2
+        }
+
+        .calendar-panel {
+            flex: 1
+        }
+
+        .link {
+            color: #38bdf8;
+            font-weight: bold
+        }
+
+        .version {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 20px
+        }
+
+        .subtitle {
+            color: #94a3b8
+        }
+
+        .gear {
+            float: right
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .7)
+        }
+
+        .modal-content {
+            background: #1e293b;
+            margin: 5% auto;
+            padding: 20px;
+            max-width: 700px;
+            border-radius: 12px
+        }
+
+        input {
+            width: 100%;
+            margin: 5px 0 12px;
+            padding: 8px
+        }
+
+        button {
+            padding: 8px 12px
+        }
+
+        @media(max-width:768px) {
+
+            .top-row,
+            .main-row,
+            .bottom-row {
+                display: block
+            }
+
+            .top-card,
+            .bottom-card {
+                margin-bottom: 15px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Murray's Big Plan <button class="gear" onclick="openSettings()">⚙️</button></h1>
+    <div class="subtitle">Your personal dashboard for today's priorities</div>
+    <div class="card">
+        <h2>Today's Briefing</h2>
+        <p>4 tasks remaining • 3 appointments today • 0 overdue items</p>
+    </div>
+    <div class="top-row">
+        <div class="top-card">
+            <h3>My Day</h3>
+            <div class="big">4</div>
+        </div>
+        <div class="top-card">
+            <h3>Important</h3>
+            <div class="big">2</div>
+        </div>
+        <div class="top-card">
+            <h3>Calendar</h3>
+            <div class="big">3</div>
+        </div>
+        <div class="top-card">
+            <h3>Countdown</h3>
+            <div id="countdownName">Belgium Trip</div>
+            <div class="big" id="countdownDays">34</div><button onclick="editCountdown()">Edit</button>
+        </div>
+    </div>
+    <div class="main-row">
+        <div class="tasks-panel card">
+            <h2>Today's Tasks</h2>
+            <p>☐ Review Garmin workout data</p>
+            <p>☐ Pay Visa bill</p>
+        </div>
+        <div class="calendar-panel card">
+            <h2>Today's Calendar</h2>
+            <p>09:00 Appointment</p>
+            <p>13:00 Lunch</p>
+        </div>
+    </div>
+    <div class="bottom-row">
+        <div class="bottom-card" onclick="openLink('projectsUrl')">
+            <h3>📁 Projects</h3>
+            <div class="link">Open →</div>
+        </div>
+        <div class="bottom-card" onclick="openLink('ideasUrl')">
+            <h3>💡 Ideas</h3>
+            <div class="link">Open →</div>
+        </div>
+        <div class="bottom-card" onclick="openLink('trainingUrl')">
+            <h3>🚣 Training</h3>
+            <div class="link">Open →</div>
+        </div>
+        <div class="bottom-card" onclick="openLink('lifeUrl')">
+            <h3>🌎 Life</h3>
+            <div class="link">Open →</div>
+        </div>
+    </div>
+    <div class="card">
+        <h2>Accomplishments</h2>
+        <p>18 tasks completed this week</p>
+    </div>
+    <div class="version">Murray's Big Plan v1.4<br>Settings Popup • Saved Navigation</div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2>⚙️ Settings</h2><label>Projects URL</label><input id="projectsUrl"><label>Ideas URL</label><input
+                id="ideasUrl"><label>Training URL</label><input id="trainingUrl"><label>Life URL</label><input
+                id="lifeUrl"><button onclick="saveSettings()">Save</button> <button
+                onclick="closeSettings()">Close</button>
+        </div>
+    </div>
+    <script>const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', trainingUrl: 'https://winter-fit.navybetta5.chatgpt.site/', lifeUrl: 'https://job-jar.navybetta5.chatgpt.site/' }; function loadSettings() { for (let k in defaults) { document.getElementById(k).value = localStorage.getItem(k) || defaults[k]; } } function saveSettings() { for (let k in defaults) { localStorage.setItem(k, document.getElementById(k).value); } alert('Saved'); } function openLink(k) { window.open(localStorage.getItem(k) || defaults[k], '_blank'); } function openSettings() { loadSettings(); document.getElementById('settingsModal').style.display = 'block'; } function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; } function editCountdown() { let n = prompt('Countdown Name', localStorage.getItem('countdownName') || document.getElementById('countdownName').innerText); if (n) { localStorage.setItem('countdownName', n); document.getElementById('countdownName').innerText = n; } let d = prompt('Days Remaining', localStorage.getItem('countdownDays') || document.getElementById('countdownDays').innerText); if (d) { localStorage.setItem('countdownDays', d); document.getElementById('countdownDays').innerText = d; } } window.onload = function () { if (localStorage.getItem('countdownName')) document.getElementById('countdownName').innerText = localStorage.getItem('countdownName'); if (localStorage.getItem('countdownDays')) document.getElementById('countdownDays').innerText = localStorage.getItem('countdownDays'); };</script>
+</body>
+
+</html>
