@@ -207,6 +207,78 @@
                 onclick="closeSettings()">Close</button>
         </div>
     </div>
+    <script>
+
+        let pca = null;
+        let initialized = false;
+        
+        const msalConfig = {
+            auth: {
+                clientId: "7a533e96-1dc4-4f59-98ea-2564c7b4d0e1",
+                authority: "https://login.microsoftonline.com/common",
+                redirectUri: window.location.href
+            }
+        };
+        
+        async function startup() {
+        
+            try {
+        
+                pca =
+                    new msal.PublicClientApplication(
+                        msalConfig
+                    );
+        
+                await pca.initialize();
+        
+                initialized = true;
+        
+                document.getElementById(
+                    "status"
+                ).innerHTML =
+                    "Ready for sign in";
+        
+            }
+            catch(err){
+        
+                console.error(err);
+        
+                document.getElementById(
+                    "status"
+                ).innerHTML =
+                    err;
+            }
+        }
+        
+        async function signIn() {
+        
+            try {
+        
+                const result =
+                    await pca.loginPopup({
+                        scopes:[
+                            "openid",
+                            "profile",
+                            "User.Read"
+                        ]
+                    });
+        
+                document.getElementById(
+                    "status"
+                ).innerHTML =
+                    result.account.username;
+        
+            }
+            catch(err){
+        
+                console.error(err);
+            }
+        }
+        
+        startup();
+        
+        </script>
+
     <script>const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', 
     ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', 
     trainingUrl: 'https://winter-fit.navybetta5.chatgpt.site/', 
