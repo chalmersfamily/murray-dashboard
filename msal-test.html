@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>MSAL Test</title>
+
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    max-width:800px;
+    margin:auto;
+    padding:40px;
+}
+.card{
+    border:1px solid #ccc;
+    padding:20px;
+    border-radius:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>MSAL Load Test</h1>
+
+<p id="result">
+Testing...
+</p>
+
+<button onclick="testMsal()">
+Check MSAL
+</button>
+
+</div>
+
+<script>
+
+function testMsal(){
+
+    const result =
+        document.getElementById(
+            "result"
+        );
+
+    result.innerHTML =
+        "typeof msal = " +
+        typeof msal;
+
+}
+
+window.onload = function(){
+
+    document
+        .getElementById(
+            "result"
+        )
+        .innerHTML =
+        "Page Loaded";
+
+}
+
+</script>
+
+</body>
+</html>
