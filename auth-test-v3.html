@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -9,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
 
 <style>
+
 body{
     font-family:Arial,sans-serif;
     max-width:800px;
@@ -24,7 +27,15 @@ body{
 
 button{
     padding:10px 15px;
+    margin-right:10px;
 }
+
+#output{
+    margin-top:20px;
+    padding-top:10px;
+    border-top:1px solid #ddd;
+}
+
 </style>
 
 </head>
@@ -36,12 +47,18 @@ button{
 <h1>Microsoft Sign-In Test v3</h1>
 
 <button onclick="signIn()">
-Sign In
+    Sign In
 </button>
-<button onclick="testGraph()">Test Graph</button>
+
+<button onclick="testGraph()">
+    Test Graph
+</button>
+
 <p id="status">
-Initializing...
+    Initializing...
 </p>
+
+<div id="output"></div>
 
 </div>
 
@@ -55,133 +72,15 @@ const msalConfig = {
     auth: {
 
         clientId:
-        "7a533e96-1dc4-4f59-98ea-2564c7b4d0e1",
+            "7a533e96-1dc4-4f59-98ea-2564c7b4d0e1",
 
         authority:
-        "https://login.microsoftonline.com/common",
+            "https://login.microsoftonline.com/common",
 
         redirectUri:
-        "https://chalmersfamily.github.io/murray-dashboard/auth-test-v3.html"
-
+            "https://chalmersfamily.github.io/murray-dashboard/auth-test-v3.html"
     }
 
 };
 
-async function startup(){
-
-    try{
-
-        pca =
-            new msal.PublicClientApplication(
-                msalConfig
-            );
-
-        await pca.initialize();
-
-        initialized = true;
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "Ready for sign in";
-
-    }
-    catch(err){
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "Startup Error:<br>" +
-            err;
-
-        console.error(err);
-
-    }
-
-}
-async function testGraph() {
-    try {
-
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-            scopes: ["User.Read"],
-            account: msalInstance.getAllAccounts()[0]
-        });
-
-        const response = await fetch(
-            "https://graph.microsoft.com/v1.0/me",
-            {
-                headers: {
-                    Authorization: `Bearer ${tokenResponse.accessToken}`
-                }
-            }
-        );
-
-        const user = await response.json();
-
-        document.getElementById("output").innerHTML =
-            `
-            <h3>Graph Test Success</h3>
-            Name: ${user.displayName}<br>
-            Email: ${user.mail || user.userPrincipalName}<br>
-            `;
-    }
-    catch (err) {
-        console.error(err);
-        document.getElementById("output").innerHTML =
-            "Graph Error: " + err;
-    }
-}
-async function signIn(){
-
-    if(!initialized){
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "Still initializing";
-
-        return;
-
-    }
-
-    try{
-
-        const result =
-            await pca.loginPopup({
-
-                scopes:[
-
-                    "openid",
-                    "profile",
-                    "User.Read"
-
-                ]
-
-            });
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            "Signed in as:<br>" +
-            result.account.username;
-
-    }
-    catch(err){
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-            err;
-
-        console.error(err);
-
-    }
-
-}
-
-startup();
-
-</script>
-
-</body>
-</html>
+async 
