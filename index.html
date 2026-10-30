@@ -250,34 +250,40 @@
             }
         }
         
+        
         async function signIn() {
-        
-            try {
-        
-                const result =
-                    await pca.loginPopup({
-                        scopes:[
-                            "openid",
-                            "profile",
-                            "User.Read"
-                        ]
-                    });
-        
-                document.getElementById(
-                    "status"
-                ).innerHTML =
-                    result.account.username;
-        
-            }
-            catch(err){
-        
-                console.error(err);
-            }
-        }
-        
-        startup();
-        
-        </script>
+
+try {
+
+    const result =
+        await pca.loginPopup({
+            scopes: [
+                "openid",
+                "profile",
+                "User.Read",
+                "Calendars.Read",
+                "Tasks.Read"
+            ]
+        });
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+        result.account.username;
+
+    
+
+}
+catch(err){
+
+    console.error(err);
+
+}
+}
+
+startup();
+       
+</script> 
 
     <script>const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', 
     ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', 
