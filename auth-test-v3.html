@@ -99,7 +99,38 @@ async function startup(){
     }
 
 }
+async function testGraph() {
+    try {
 
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+            scopes: ["User.Read"],
+            account: msalInstance.getAllAccounts()[0]
+        });
+
+        const response = await fetch(
+            "https://graph.microsoft.com/v1.0/me",
+            {
+                headers: {
+                    Authorization: `Bearer ${tokenResponse.accessToken}`
+                }
+            }
+        );
+
+        const user = await response.json();
+
+        document.getElementById("output").innerHTML =
+            `
+            <h3>Graph Test Success</h3>
+            Name: ${user.displayName}<br>
+            Email: ${user.mail || user.userPrincipalName}<br>
+            `;
+    }
+    catch (err) {
+        console.error(err);
+        document.getElementById("output").innerHTML =
+            "Graph Error: " + err;
+    }
+}
 async function signIn(){
 
     if(!initialized){
