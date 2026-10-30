@@ -192,10 +192,9 @@ async function testCalendar() {
 
     try {
 
-        const accounts =
-            pca.getAllAccounts();
+        const accounts = pca.getAllAccounts();
 
-        if(accounts.length === 0) {
+        if (accounts.length === 0) {
 
             document.getElementById("output").innerHTML =
                 "Please sign in first.";
@@ -222,9 +221,17 @@ async function testCalendar() {
                 });
         }
 
+        const now = new Date();
+
+        const nextWeek = new Date();
+
+        nextWeek.setDate(
+            now.getDate() + 7
+        );
+
         const response =
             await fetch(
-                "https://graph.microsoft.com/v1.0/me/events?$top=10&$orderby=start/dateTime",
+                `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now.toISOString()}&endDateTime=${nextWeek.toISOString()}`,
                 {
                     headers: {
                         Authorization:
@@ -238,38 +245,64 @@ async function testCalendar() {
             await response.json();
 
         let html =
-            "<h3>Upcoming Events</h3>";
+            "<h3>Upcoming Events (Next 7 Days)</h3>";
 
-        if(!data.value || data.value.length === 0) {
+        if (!data.value || data.value.length === 0) {
 
             html +=
-                "<p>No events found.</p>";
+                "<p>No upcoming events found.</p>";
         }
         else {
 
             data.value.forEach(event => {
 
-                html +=
-                    `
-                    <p>
-                    <strong>${event.subject}</strong><br>
-                    ${event.start.dateTime}
-                    </p>
-                    `;
+                const eventDate =
+                    new Date(
+                        event.start.dateTime
+                    );
 
+                const formattedDate =
+                    eventDate.toLocaleString(
+                        undefined,
+                        {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit"
+                        }
+                    );
+
+                html += `
+                    <div style="
+                        margin-bottom:12px;
+                        padding:8px;
+                        border-bottom:1px solid #ddd;
+                    ">
+                        <strong>
+                            ${event.subject}
+                        </strong>
+                        <br>
+                        ${formattedDate}
+                    </div>
+                `;
             });
         }
 
-        document.getElementById("output").innerHTML =
+        document.getElementById(
+            "output"
+        ).innerHTML =
             html;
-
     }
     catch(err) {
 
         console.error(err);
 
-        document.getElementById("output").innerHTML =
-            "Calendar Error:<br>" + err;
+        document.getElementById(
+            "output"
+        ).innerHTML =
+            "Calendar Error:<br>" +
+            err;
     }
 }
 
