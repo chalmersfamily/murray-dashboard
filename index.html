@@ -358,11 +358,35 @@ data.value
     .slice(0,10)
     .forEach(event => {
 
-        html += `
-            <p>
-                <strong>${event.subject}</strong>
-            </p>
-        `;
+        const startDate =
+            new Date(
+                event.start.dateTime
+            );
+
+        const formattedDate =
+            startDate.toLocaleString(
+                undefined,
+                {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit"
+                }
+            );
+
+            html += `
+    <div style="
+        margin-bottom:12px;
+        border-bottom:1px solid #334155;
+        padding-bottom:8px;
+    ">
+        <strong>${event.subject}</strong><br>
+        <span style="color:#94a3b8">
+            ${formattedDate}
+        </span>
+    </div>
+`;
     });
 
 document.getElementById(
