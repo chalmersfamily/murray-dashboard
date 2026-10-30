@@ -141,9 +141,7 @@
     </div>
     <div class="card">
         <h2>Today's Briefing</h2>
-        <p id="briefingText">
-            Loading briefing...
-        </p>
+        <p id="briefingText">Loading briefing...</p>
     </div>
     <div class="top-row">
         <div class="top-card">
@@ -473,6 +471,17 @@ document.getElementById(
     "overdueCount"
 ).innerText =
     overdueCount;
+    document.getElementById(
+    "briefingText"
+).innerText =
+    myDayCount +
+    " tasks remaining • " +
+    document.getElementById(
+        "calendarCount"
+    ).innerText +
+    " appointments upcoming • " +
+    overdueCount +
+    " overdue items";
 }
 
 startup();
