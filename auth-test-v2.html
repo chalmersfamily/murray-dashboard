@@ -57,6 +57,23 @@ const pca =
         msalConfig
     );
 
+let initialized = false;
+
+async function initializeMsal(){
+
+    await pca.initialize();
+
+    initialized = true;
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+        "Ready for sign in";
+
+}
+
+initializeMsal();
+
 async function signIn(){
 
     try{
