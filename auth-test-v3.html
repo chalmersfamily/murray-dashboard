@@ -50,6 +50,9 @@ button{
 <button onclick="testGraph()">
     Test Graph
 </button>
+    <button onclick="testCalendar()">
+    Calendar
+</button>
 
 <p id="status">
     Initializing...
@@ -132,66 +135,52 @@ async function signIn() {
     }
 }
 
-async function testGraph() {
+async function testCalendar() {
 
     try {
 
-        const accounts =
-            pca.getAllAccounts();
-
-        if (accounts.length === 0) {
-
-            document.getElementById("output").innerHTML =
-                "Please sign in first.";
-
-            return;
-        }
+        const accounts = pca.getAllAccounts();
 
         const tokenResponse =
             await pca.acquireTokenSilent({
-                scopes: ["User.Read"],
+                scopes: ["Calendars.Read"],
                 account: accounts[0]
             });
 
         const response =
             await fetch(
-                "https://graph.microsoft.com/v1.0/me",
+                "https://graph.microsoft.com/v1.0/me/events?$top=10&$orderby=start/dateTime",
                 {
                     headers: {
                         Authorization:
-                            "Bearer " +
-                            tokenResponse.accessToken
+                            "Bearer " + tokenResponse.accessToken
                     }
                 }
             );
 
-        const user =
-            await response.json();
+        const data = await response.json();
+
+        let html =
+            "<h3>Upcoming Events</h3>";
+
+        data.value.forEach(event => {
+
+            html +=
+                `<p>
+                    <strong>${event.subject}</strong><br>
+                    ${event.start.dateTime}
+                 </p>`;
+        });
 
         document.getElementById("output").innerHTML =
-            `
-            <h3>Graph Test Success</h3>
-
-            <p>
-                <strong>Name:</strong>
-                ${user.displayName}
-            </p>
-
-            <p>
-                <strong>Email:</strong>
-                ${user.mail || user.userPrincipalName}
-            </p>
-
-            <pre>${JSON.stringify(user, null, 2)}</pre>
-            `;
-
+            html;
     }
     catch(err) {
 
         console.error(err);
 
         document.getElementById("output").innerHTML =
-            "Graph Error:<br>" + err;
+            err;
     }
 }
 
