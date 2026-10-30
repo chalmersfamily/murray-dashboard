@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>Auth Test v2</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
+
+<style>
+body{
+    font-family:Arial;
+    max-width:800px;
+    margin:auto;
+    padding:40px;
+}
+button{
+    padding:10px 15px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Microsoft Sign-In Test</h1>
+
+<button onclick="signIn()">
+Sign In
+</button>
+
+<p id="status">
+Not Signed In
+</p>
+
+<script>
+
+const msalConfig = {
+
+    auth: {
+
+        clientId:
+        "7a533e96-1dc4-4f59-98ea-2564c7b4d0e1",
+
+        authority:
+        "https://login.microsoftonline.com/common",
+
+        redirectUri:
+        "https://chalmersfamily.github.io/murray-dashboard/auth-test-v2.html"
+
+    }
+
+};
+
+const pca =
+    new msal.PublicClientApplication(
+        msalConfig
+    );
+
+async function signIn(){
+
+    try{
+
+        const result =
+            await pca.loginPopup({
+
+                scopes:[
+                    "openid",
+                    "profile",
+                    "User.Read"
+                ]
+
+            });
+
+        document.getElementById(
+            "status"
+        ).innerHTML =
+            "Signed in as: " +
+            result.account.username;
+
+    }
+    catch(err){
+
+        document.getElementById(
+            "status"
+        ).innerHTML =
+            err;
+
+        console.error(
+            err
+        );
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
