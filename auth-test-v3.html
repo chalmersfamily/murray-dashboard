@@ -36,7 +36,7 @@ button{
 </style>
 
 </head>
-
+ 
 <body>
 
 <div class="card">
@@ -402,16 +402,28 @@ async function testCalendar() {
 
             html += "<ul>";
 
-            tasksData.value.forEach(task => {
+          const activeTasks =
+    tasksData.value.filter(
+        task => task.status !== "completed"
+    );
 
-                const completed =
-                    task.status === "completed"
-                    ? "✅"
-                    : "⬜";
+if (activeTasks.length === 0) {
 
-                html +=
-                    `<li>${completed} ${task.title}</li>`;
-            });
+    html +=
+        "<p>No outstanding tasks.</p>";
+}
+else {
+
+    html += "<ul>";
+
+    activeTasks.forEach(task => {
+
+        html +=
+            `<li>⬜ ${task.title}</li>`;
+    });
+
+    html += "</ul>";
+}
 
             html += "</ul>";
         }
