@@ -281,6 +281,53 @@ catch(err){
 }
 }
 
+async function loadDashboard() {
+
+const accounts =
+    pca.getAllAccounts();
+
+if(accounts.length === 0){
+    return;
+}
+
+const account =
+    accounts[0];
+
+let tokenResponse;
+
+try {
+
+    tokenResponse =
+        await pca.acquireTokenSilent({
+            scopes: [
+                "Calendars.Read",
+                "Tasks.Read"
+            ],
+            account
+        });
+
+}
+catch {
+
+    tokenResponse =
+        await pca.acquireTokenPopup({
+            scopes: [
+                "Calendars.Read",
+                "Tasks.Read"
+            ]
+        });
+}
+
+const headers = {
+    Authorization:
+        "Bearer " +
+        tokenResponse.accessToken
+};
+
+await loadCalendar(headers);
+
+await loadTodo(headers);
+}
 startup();
        
 </script> 
