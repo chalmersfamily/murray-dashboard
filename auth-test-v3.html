@@ -307,6 +307,132 @@ async function testCalendar() {
             err;
     }
 }
+    async function testTodo() {
+
+    try {
+
+        const accounts =
+            pca.getAllAccounts();
+
+        if (accounts.length === 0) {
+
+            document.getElementById("output").innerHTML =
+                "Please sign in first.";
+
+            return;
+        }
+
+        let tokenResponse;
+
+        try {
+
+            tokenResponse =
+                await pca.acquireTokenSilent({
+                    scopes: ["Tasks.Read"],
+                    account: accounts[0]
+                });
+
+        }
+        catch {
+
+            tokenResponse =
+                await pca.acquireTokenPopup({
+                    scopes: ["Tasks.Read"]
+                });
+        }
+
+        const listsResponse =
+            await fetch(
+                "https://graph.microsoft.com/v1.0/me/todo/lists",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            tokenResponse.accessToken
+                    }
+                }
+            );
+
+        const listsData =
+            await listsResponse.json();
+
+        let html =
+            "<h3>Microsoft To Do</h3>";
+
+        if (!listsData.value ||
+            listsData.value.length === 0) {
+
+            html +=
+                "<p>No task lists found.</p>";
+
+            document.getElementById("output").innerHTML =
+                html;
+
+            return;
+        }
+
+        for (const list of listsData.value) {
+
+            html +=
+                `<h4>${list.displayName}</h4>`;
+
+            const tasksResponse =
+                await fetch(
+                    `https://graph.microsoft.com/v1.0/me/todo/lists/${list.id}/tasks`,
+                    {
+                        headers: {
+                            Authorization:
+                                "Bearer " +
+                                tokenResponse.accessToken
+                        }
+                    }
+                );
+
+            const tasksData =
+                await tasksResponse.json();
+
+            if (!tasksData.value ||
+                tasksData.value.length === 0) {
+
+                html +=
+                    "<p>No tasks.</p>";
+
+                continue;
+            }
+
+            html += "<ul>";
+
+            tasksData.value.forEach(task => {
+
+                const completed =
+                    task.status === "completed"
+                    ? "✅"
+                    : "⬜";
+
+                html +=
+                    `<li>${completed} ${task.title}</li>`;
+            });
+
+            html += "</ul>";
+        }
+
+        document.getElementById(
+            "output"
+        ).innerHTML =
+            html;
+
+    }
+    catch(err) {
+
+        console.error(err);
+
+        document.getElementById(
+            "output"
+        ).innerHTML =
+            "To Do Error:<br>" +
+            err;
+    }
+}
 
 startup();
 
