@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Murray's Big Plan v1.9.0</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
+<style>
+body{background:#0f172a;color:white;font-family:Arial,sans-serif;max-width:1200px;margin:auto;padding:20px}
+.card,.top-card,.bottom-card{background:#1e293b;border-radius:12px;padding:15px}.card{margin-bottom:15px}
+.big{font-size:36px;color:#38bdf8;font-weight:bold}.top-row,.main-row,.bottom-row{display:flex;gap:15px;margin-bottom:15px}.bottom-card{flex:1;cursor:pointer}.tasks-panel{flex:2}.calendar-panel{flex:1}.subtitle,.task-group-title{color:#94a3b8}.version{text-align:center;color:#94a3b8;font-size:12px;margin-top:20px}.gear{float:right}.next-event{border-left:4px solid #38bdf8}.loading{color:#fbbf24}.error{color:#f87171}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7)}.modal-content{background:#1e293b;margin:5% auto;padding:20px;max-width:700px;border-radius:12px}input{width:100%;margin:5px 0 12px;padding:8px}@media(max-width:768px){.top-row,.main-row,.bottom-row{display:block}.top-card,.bottom-card{margin-bottom:15px}}
+</style>
+</head>
+<body>
+<h1>Murray's Big Plan v1.9.0 <button onclick="signIn()">Sign In</button><button class="gear" onclick="openSettings()">⚙️</button></h1>
+<div id="status" class="subtitle">Initializing...</div>
+<div class="card"><h2>Today's Briefing</h2><p id="briefingText">Loading briefing...</p></div>
+<div class="card next-event"><h2>Next Event</h2><div id="nextEventCard">No events loaded.</div></div>
+<div class="top-row">
+<div class="top-card"><h3>My Day</h3><div class="big" id="myDayCount">0</div></div>
+<div class="top-card"><h3>Overdue</h3><div class="big" id="overdueCount">0</div></div>
+<div class="top-card"><h3>Calendar</h3><div class="big" id="calendarCount">0</div></div>
+<div class="top-card"><h3>Countdown</h3><div id="countdownName">Belgium Trip</div><div class="big" id="countdownDays">0</div><button onclick="editCountdown()">Edit</button></div>
+</div>
+<div class="main-row">
+<div class="tasks-panel card"><h2>Tasks</h2><div id="tasksContainer" class="loading">Loading tasks...</div></div>
+<div class="calendar-panel card"><h2>Upcoming Events</h2><div id="calendarContainer">Loading calendar...</div></div>
+</div>
+<div class="bottom-row">
+<div class="bottom-card" onclick="openLink('projectsUrl')"><h3>📁 Projects</h3></div>
+<div class="bottom-card" onclick="openLink('ideasUrl')"><h3>💡 Ideas</h3></div>
+<div class="bottom-card" onclick="openLink('trainingUrl')"><h3>🚣 Training</h3></div>
+<div class="bottom-card" onclick="openLink('lifeUrl')"><h3>🌎 Life</h3></div>
+</div>
+<div class="version">v1.9.0 • Auto-login Recovery • Next Event • Smart Task Grouping • Enhanced Briefing</div>
+<div id="settingsModal" class="modal"><div class="modal-content"><h2>Settings</h2><label>Projects URL</label><input id="projectsUrl"><label>Ideas URL</label><input id="ideasUrl"><label>Training URL</label><input id="trainingUrl"><label>Life URL</label><input id="lifeUrl"><button onclick="saveSettings()">Save</button> <button onclick="closeSettings()">Close</button></div></div>
+<script>
+let pca=null;
+const msalConfig={auth:{clientId:'7a533e96-1dc4-4f59-98ea-2564c7b4d0e1',authority:'https://login.microsoftonline.com/common',redirectUri:window.location.href}};
+async function startup(){try{pca=new msal.PublicClientApplication(msalConfig);await pca.initialize();const accts=pca.getAllAccounts();if(accts.length){document.getElementById('status').innerText='Recovered session: '+accts[0].username;await loadDashboard();}else{document.getElementById('status').innerText='Ready for sign in';}}catch(e){document.getElementById('status').innerHTML='<span class=error>'+e+'</span>';}}
+async function signIn(){const r=await pca.loginPopup({scopes:['openid','profile','User.Read','Calendars.Read','Tasks.Read']});document.getElementById('status').innerText=r.account.username;await loadDashboard();}
+async function loadDashboard(){try{const a=pca.getAllAccounts()[0];if(!a)return;let t;try{t=await pca.acquireTokenSilent({scopes:['Calendars.Read','Tasks.Read'],account:a});}catch{t=await pca.acquireTokenPopup({scopes:['Calendars.Read','Tasks.Read']});}const h={Authorization:'Bearer '+t.accessToken};await Promise.all([loadCalendar(h),loadTodo(h)]);}catch(e){document.getElementById('briefingText').innerHTML='<span class=error>Dashboard load failed</span>';}}
+async function loadCalendar(headers){const now=new Date();const future=new Date();future.setDate(now.getDate()+7);const r=await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now.toISOString()}&endDateTime=${future.toISOString()}`,{headers});const d=await r.json();const ev=d.value||[];document.getElementById('calendarCount').innerText=ev.length;let html='';ev.slice(0,10).forEach(e=>{html+=`<p><strong>${e.subject}</strong><br>${new Date(e.start.dateTime).toLocaleString()}</p>`});document.getElementById('calendarContainer').innerHTML=html||'No events found';if(ev.length){const n=ev.sort((a,b)=>new Date(a.start.dateTime)-new Date(b.start.dateTime))[0];const mins=Math.max(0,Math.round((new Date(n.start.dateTime)-new Date())/60000));document.getElementById('nextEventCard').innerHTML=`<strong>${n.subject}</strong><br>${new Date(n.start.dateTime).toLocaleString()}<br>Starts in ${mins} min`;}}
+async function loadTodo(headers){const lr=await fetch('https://graph.microsoft.com/v1.0/me/todo/lists',{headers});const ld=await lr.json();let overdue=[],today=[],upcoming=[];const now=new Date();for(const list of (ld.value||[])){const tr=await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${list.id}/tasks`,{headers});const td=await tr.json();(td.value||[]).filter(t=>t.status!=='completed').forEach(t=>{if(!t.dueDateTime){upcoming.push(t);return;}const due=new Date(t.dueDateTime.dateTime);if(due<now) overdue.push(t); else if(due.toDateString()===now.toDateString()) today.push(t); else upcoming.push(t);});}
+let html=`<div class='task-group-title'>Overdue (${overdue.length})</div>`+overdue.map(t=>`<p>🔴 ${t.title}</p>`).join('');
+html+=`<div class='task-group-title'>Due Today (${today.length})</div>`+today.map(t=>`<p>🟡 ${t.title}</p>`).join('');
+html+=`<div class='task-group-title'>Upcoming (${upcoming.length})</div>`+upcoming.map(t=>`<p>🟢 ${t.title}</p>`).join('');
+document.getElementById('tasksContainer').innerHTML=html||'No active tasks';
+document.getElementById('myDayCount').innerText=overdue.length+today.length+upcoming.length;document.getElementById('overdueCount').innerText=overdue.length;document.getElementById('briefingText').innerText=`${overdue.length+today.length+upcoming.length} active tasks • ${today.length} due today • ${overdue.length} overdue • ${document.getElementById('calendarCount').innerText} events upcoming`;}
+const defaults={projectsUrl:'https://mask-projecttrack.pages.dev/',ideasUrl:'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas',trainingUrl:'https://winter-fit.navybetta5.chatgpt.site/',lifeUrl:'https://job-jar.navybetta5.chatgpt.site/'};
+function loadSettings(){for(let k in defaults){document.getElementById(k).value=localStorage.getItem(k)||defaults[k];}}
+function saveSettings(){for(let k in defaults){localStorage.setItem(k,document.getElementById(k).value);}alert('Saved');}
+function openLink(k){window.open(localStorage.getItem(k)||defaults[k],'_blank');}
+function openSettings(){loadSettings();settingsModal.style.display='block';}
+function closeSettings(){settingsModal.style.display='none';}
+function editCountdown(){let n=prompt('Countdown Name',localStorage.getItem('countdownName')||'Belgium Trip');let d=prompt('Target Date (YYYY-MM-DD)',localStorage.getItem('countdownTarget')||'2026-12-01');if(n)localStorage.setItem('countdownName',n);if(d)localStorage.setItem('countdownTarget',d);updateCountdown();}
+function updateCountdown(){const n=localStorage.getItem('countdownName')||'Belgium Trip';const d=localStorage.getItem('countdownTarget')||'2026-12-01';document.getElementById('countdownName').innerText=n;const days=Math.ceil((new Date(d)-new Date())/86400000);document.getElementById('countdownDays').innerText=days;}
+startup();updateCountdown();
+</script></body></html>
