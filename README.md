@@ -1,5 +1,5 @@
 Murray's Big Plan
-Version: 1.9.2
+Version: 1.9.3
 Status: Active Development
 Owner: Murray Chalmers
 Production Branch: main
@@ -239,8 +239,13 @@ Quick task creation
 Mobile optimization
 Additional Microsoft Graph integrations
 Version History
-v1.9.2
+v1.9.3
 Current production version.
+
+Idea capture opens the existing Idea Garden and waits for its save receipt. Allow popups and sign in to Idea Garden when asked. The Dashboard keeps a local copy; Add to garden transfers older saved ideas or safely retries an unconfirmed save without overwriting garden edits. Open Idea Garden is linked directly. Deleting a Dashboard copy does not delete the garden copy. Both apps use browser storage; use Idea Garden Save to OneDrive for a cloud snapshot. No cross-device automatic sync is provided.
+
+v1.9.2
+Previous production version.
 
 Adds standalone idea capture with destination labels and confirmed deletion, styled to match the dashboard. Ideas are saved only in this browser under murray-dashboard-ideas-v1; no transfer to Launchpad, Idea Garden, ProjectTrack, or OneDrive is performed. Clearing browser data removes saved ideas.
 
