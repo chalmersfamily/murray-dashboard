@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.9.2</title>
+    <title>Murray's Big Plan v1.9.3</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -146,7 +146,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.9.2 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.9.3 <button onclick="signIn()">Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -203,6 +203,7 @@
     </div>
     <section class="card ideas-capture" aria-labelledby="ideasHeading">
         <h2 id="ideasHeading">💡 Got an idea? Drop it here.</h2>
+        <p><a style="color:#38bdf8" href="https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas" target="_blank" rel="noopener">🌱 Open Idea Garden ↗</a></p>
         <p class="subtitle">A thought now. A project later.</p>
         <form id="ideasForm">
             <label for="ideaText">Your idea</label>
@@ -216,12 +217,12 @@
                 <button type="submit" id="saveIdeaButton">Save idea</button>
             </div>
         </form>
-        <p class="subtitle"><small>Saved only in this browser for Murray Dashboard. Destinations are labels; ideas are not sent to other apps.</small></p>
+        <p class="subtitle"><small>Save opens Idea Garden to add your idea there too. Allow its popup and sign in if asked. Both lists use this browser; use Idea Garden’s Save to OneDrive for a cloud copy. Destinations are labels.</small></p>
         <div id="ideasStatus" role="status" aria-live="polite"></div>
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.9.2 • Separate Ideas List • Browser-saved Idea Capture
+        v1.9.3 • Idea Garden Connection • Confirmed Idea Delivery
         </div>
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -296,6 +297,47 @@ Starts in ${days}d ${hours}h ${minutes}m
             const list = document.getElementById('ideasList');
             const status = document.getElementById('ideasStatus');
             const button = document.getElementById('saveIdeaButton');
+            const gardenUrl = 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas';
+            const gardenOrigin = new URL(gardenUrl).origin;
+            let transfer = null;
+            function sendToGarden(idea) {
+                if (transfer) { status.textContent = 'Finish the current Idea Garden transfer first.'; return; }
+                const popup = window.open(gardenUrl, 'murray-idea-garden');
+                if (!popup) { status.textContent = 'Saved in Dashboard only. Allow popups, then click Add to garden beside the idea.'; return; }
+                const requestId = crypto.randomUUID();
+                const payload = {id: 'dashboard-' + idea.id, text: idea.text, dest: idea.dest, created: idea.created};
+                const finish = () => { clearInterval(transfer.timer); transfer = null; };
+                const started = Date.now();
+                const timer = setInterval(() => {
+                    if (popup.closed || Date.now() - started > 180000) {
+                        finish(); button.disabled = false;
+                        status.textContent = 'Saved in Dashboard; garden receipt not confirmed. Click Add to garden to retry safely.';
+                        return;
+                    }
+                    popup.postMessage({channel: 'murray-idea-garden-v1', type: 'ping', requestId}, gardenOrigin);
+                }, 700);
+                transfer = {popup, requestId, payload, timer, finish, localId: idea.id};
+                status.textContent = 'Saved in Dashboard. Waiting for Idea Garden—sign in there if asked.';
+            }
+            window.addEventListener('message', event => {
+                const t = transfer, m = event.data;
+                if (!t || event.origin !== gardenOrigin || event.source !== t.popup || !m ||
+                    m.channel !== 'murray-idea-garden-v1' || m.requestId !== t.requestId) return;
+                if (m.type === 'ready') {
+                    t.popup.postMessage({channel: m.channel, type: 'add', requestId: t.requestId, idea: t.payload}, gardenOrigin);
+                } else if (m.type === 'saved' && m.ideaId === t.payload.id) {
+                    t.finish(); button.disabled = false;
+                    try {
+                        const items = read(); const idea = items.find(i => i.id === t.localId);
+                        if (idea) idea.gardenSavedAt = new Date().toISOString();
+                        localStorage.setItem(key, JSON.stringify(items)); render(items);
+                        status.textContent = 'Saved in Dashboard and confirmed in Idea Garden.';
+                    } catch { status.textContent = 'Idea Garden confirmed the save. Dashboard receipt could not be stored.'; }
+                } else if (m.type === 'failed') {
+                    t.finish(); button.disabled = false;
+                    status.textContent = 'Saved in Dashboard only. Idea Garden could not save; check its browser storage and retry.';
+                }
+            });
             function read() {
                 const raw = localStorage.getItem(key);
                 if (raw === null) return [];
@@ -320,11 +362,15 @@ Starts in ${days}d ${hours}h ${minutes}m
                     const body = document.createElement('p'); body.textContent = idea.text;
                     const meta = document.createElement('small');
                     meta.textContent = idea.dest + ' · ' + new Date(idea.created).toLocaleDateString();
+                    if (idea.gardenSavedAt) meta.textContent += ' · Added to garden';
+                    const share = document.createElement('button');
+                    share.type = 'button'; share.textContent = 'Add to garden';
+                    share.onclick = () => sendToGarden(idea);
                     const remove = document.createElement('button');
                     remove.type = 'button'; remove.textContent = 'Delete';
                     remove.setAttribute('aria-label', 'Delete idea: ' + idea.text.slice(0, 80));
                     remove.onclick = () => {
-                        if (!confirm('Delete this idea?')) return;
+                        if (!confirm('Delete this Dashboard copy? Any Idea Garden copy is kept.')) return;
                         try {
                             const remaining = read().filter(i => i.id !== idea.id);
                             localStorage.setItem(key, JSON.stringify(remaining));
@@ -332,7 +378,7 @@ Starts in ${days}d ${hours}h ${minutes}m
                             text.focus();
                         } catch { status.textContent = 'Could not delete this idea. Saved data has been kept.'; }
                     };
-                    content.append(body, meta); row.append(content, remove); list.append(row);
+                    content.append(body, meta); row.append(content, share, remove); list.append(row);
                 }
             }
             function reload() {
@@ -348,9 +394,12 @@ Starts in ${days}d ${hours}h ${minutes}m
                 if (!value) { status.textContent = 'Type an idea first.'; text.focus(); return; }
                 try {
                     const items = read();
-                    items.push({ id: crypto.randomUUID(), text: value, dest: destination.value, created: new Date().toISOString() });
+                    if (transfer) { status.textContent = 'Finish the current Idea Garden transfer first.'; return; }
+                    const idea = { id: crypto.randomUUID(), text: value, dest: destination.value, created: new Date().toISOString() };
+                    items.push(idea);
                     localStorage.setItem(key, JSON.stringify(items));
                     render(items); text.value = ''; status.textContent = 'Saved in this browser.'; text.focus();
+                    sendToGarden(idea);
                 } catch {
                     status.textContent = 'Could not save. Your text is still here; check browser storage and try again.';
                 }
