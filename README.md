@@ -1,5 +1,5 @@
 Murray's Big Plan
-Version: 1.9.1
+Version: 1.9.2
 Status: Active Development
 Owner: Murray Chalmers
 Production Branch: main
@@ -239,8 +239,13 @@ Quick task creation
 Mobile optimization
 Additional Microsoft Graph integrations
 Version History
-v1.9.1
+v1.9.2
 Current production version.
+
+Adds standalone idea capture with destination labels and confirmed deletion, styled to match the dashboard. Ideas are saved only in this browser under murray-dashboard-ideas-v1; no transfer to Launchpad, Idea Garden, ProjectTrack, or OneDrive is performed. Clearing browser data removes saved ideas.
+
+v1.9.1
+Previous production version.
 
 Features include:
 
