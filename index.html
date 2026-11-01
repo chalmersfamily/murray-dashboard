@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.9.1</title>
+    <title>Murray's Big Plan v1.9.2</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -112,6 +112,23 @@
             padding: 8px
         }
 
+        .ideas-capture textarea, .ideas-capture select {
+            box-sizing: border-box; font: inherit; color: white;
+            background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 10px;
+        }
+        .ideas-capture textarea { width: 100%; min-height: 90px; resize: vertical; margin-bottom: 12px; }
+        .ideas-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .ideas-capture button { font: inherit; border: 1px solid #475569; border-radius: 8px;
+            padding: 9px 14px; cursor: pointer; background: #0f172a; color: white; }
+        .ideas-capture button[type=submit] { background: #38bdf8; color: #0f172a; font-weight: bold; border-color: #38bdf8; }
+        .idea-entry { display: flex; justify-content: space-between; gap: 15px; align-items: center;
+            border-top: 1px solid #334155; padding: 12px 0; }
+        .idea-entry div { min-width: 0; overflow-wrap: anywhere; }
+        .idea-entry p { margin: 0 0 6px; white-space: pre-wrap; }
+        .idea-entry small, #ideasStatus { color: #94a3b8; }
+        #ideasList { max-height: 260px; overflow-y: auto; margin-top: 12px; }
+        .ideas-capture :focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+
         @media(max-width:768px) {
 
             .top-row,
@@ -129,7 +146,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.9.1 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.9.2 <button onclick="signIn()">Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -184,8 +201,27 @@
             <h3>🌎 Life</h3>
         </div>
     </div>
+    <section class="card ideas-capture" aria-labelledby="ideasHeading">
+        <h2 id="ideasHeading">💡 Got an idea? Drop it here.</h2>
+        <p class="subtitle">A thought now. A project later.</p>
+        <form id="ideasForm">
+            <label for="ideaText">Your idea</label>
+            <textarea id="ideaText" maxlength="10000" required placeholder="Pool Stock: add a low-stock warning…"></textarea>
+            <div class="ideas-controls">
+                <label for="ideaDestination">Send to</label>
+                <select id="ideaDestination">
+                    <option>Ideas Inbox</option><option>Daily Planner</option><option>ProjectTrack</option>
+                    <option>Pool Stock</option><option>PaddleTrack</option><option>Ski Pass</option>
+                </select>
+                <button type="submit" id="saveIdeaButton">Save idea</button>
+            </div>
+        </form>
+        <p class="subtitle"><small>Saved only in this browser for Murray Dashboard. Destinations are labels; ideas are not sent to other apps.</small></p>
+        <div id="ideasStatus" role="status" aria-live="polite"></div>
+        <div id="ideasList" aria-label="Saved ideas"></div>
+    </section>
     <div class="version">
-        v1.9.1 • UI Refinements • Better Countdown • Next Event Improvements • Last Refreshed
+        v1.9.2 • Separate Ideas List • Browser-saved Idea Capture
         </div>
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -252,6 +288,78 @@ Starts in ${days}d ${hours}h ${minutes}m
         function closeSettings() { settingsModal.style.display = 'none'; }
         function editCountdown() { let n = prompt('Countdown Name', localStorage.getItem('countdownName') || 'Belgium Trip'); let d = prompt('Target Date (YYYY-MM-DD)', localStorage.getItem('countdownTarget') || '2026-12-01'); if (n) localStorage.setItem('countdownName', n); if (d) localStorage.setItem('countdownTarget', d); updateCountdown(); }
         function updateCountdown() { const n = localStorage.getItem('countdownName') || 'Belgium Trip'; const d = localStorage.getItem('countdownTarget') || '2026-12-01'; document.getElementById('countdownName').innerText = n; const days = Math.ceil((new Date(d) - new Date()) / 86400000); document.getElementById('countdownDays').innerText = days; }
+        // Separate from Launchpad / Idea Garden storage.
+        (() => {
+            const key = 'murray-dashboard-ideas-v1';
+            const text = document.getElementById('ideaText');
+            const destination = document.getElementById('ideaDestination');
+            const list = document.getElementById('ideasList');
+            const status = document.getElementById('ideasStatus');
+            const button = document.getElementById('saveIdeaButton');
+            function read() {
+                const raw = localStorage.getItem(key);
+                if (raw === null) return [];
+                const items = JSON.parse(raw);
+                if (!Array.isArray(items) || !items.every(i => i && typeof i.id === 'string' &&
+                    typeof i.text === 'string' && typeof i.dest === 'string' &&
+                    typeof i.created === 'string' && Number.isFinite(Date.parse(i.created)))) {
+                    throw new Error('Invalid saved ideas');
+                }
+                return items;
+            }
+            function render(items) {
+                list.replaceChildren();
+                if (!items.length) {
+                    const empty = document.createElement('p');
+                    empty.className = 'subtitle'; empty.textContent = 'Your next idea starts here.';
+                    list.append(empty); return;
+                }
+                for (const idea of items.slice().reverse()) {
+                    const row = document.createElement('article'); row.className = 'idea-entry';
+                    const content = document.createElement('div');
+                    const body = document.createElement('p'); body.textContent = idea.text;
+                    const meta = document.createElement('small');
+                    meta.textContent = idea.dest + ' · ' + new Date(idea.created).toLocaleDateString();
+                    const remove = document.createElement('button');
+                    remove.type = 'button'; remove.textContent = 'Delete';
+                    remove.setAttribute('aria-label', 'Delete idea: ' + idea.text.slice(0, 80));
+                    remove.onclick = () => {
+                        if (!confirm('Delete this idea?')) return;
+                        try {
+                            const remaining = read().filter(i => i.id !== idea.id);
+                            localStorage.setItem(key, JSON.stringify(remaining));
+                            render(remaining); status.textContent = 'Idea deleted.';
+                            text.focus();
+                        } catch { status.textContent = 'Could not delete this idea. Saved data has been kept.'; }
+                    };
+                    content.append(body, meta); row.append(content, remove); list.append(row);
+                }
+            }
+            function reload() {
+                try { render(read()); button.disabled = false; }
+                catch {
+                    button.disabled = true;
+                    status.textContent = 'Could not read saved ideas. Existing data has been kept. Check browser storage before saving.';
+                }
+            }
+            document.getElementById('ideasForm').onsubmit = event => {
+                event.preventDefault();
+                const value = text.value.trim();
+                if (!value) { status.textContent = 'Type an idea first.'; text.focus(); return; }
+                try {
+                    const items = read();
+                    items.push({ id: crypto.randomUUID(), text: value, dest: destination.value, created: new Date().toISOString() });
+                    localStorage.setItem(key, JSON.stringify(items));
+                    render(items); text.value = ''; status.textContent = 'Saved in this browser.'; text.focus();
+                } catch {
+                    status.textContent = 'Could not save. Your text is still here; check browser storage and try again.';
+                }
+            };
+            window.addEventListener('storage', event => {
+                if (event.key === key || event.key === null) { status.textContent = ''; reload(); }
+            });
+            reload();
+        })();
         startup(); updateCountdown();
     </script>
 </body>
