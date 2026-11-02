@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.10.0</title>
+    <title>Murray's Big Plan v1.10.1</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -163,7 +163,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.10.0 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.10.1 <button onclick="signIn()">Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -241,7 +241,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.10.0 • Activity Totals • Garmin / Health Connect + PaddleTrack
+        v1.10.1 • Activity Totals • Garmin / Health Connect + PaddleTrack
         </div>
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -500,7 +500,7 @@ Starts in ${days}d ${hours}h ${minutes}m
         (()=>{
             const origin='https://paddletrack-web.chalmersfamily.workers.dev',channel='murray-paddle-totals-v1',key='murray-dashboard-paddle-totals-v1';
             const button=document.getElementById('connectPaddleTrack'),status=document.getElementById('paddleConnectionStatus');
-            const tile=document.querySelectorAll('.activity-tile')[2];let pending=null;
+            const tile=document.querySelectorAll('.activity-tile')[2];let pending=null,lastReceipt=null;
             function valid(s){return s&&s.schema===1&&Number.isSafeInteger(s.count)&&s.count>=0&&typeof s.km==='number'&&Number.isFinite(s.km)&&s.km>=0&&typeof s.generatedAt==='string'&&Number.isFinite(Date.parse(s.generatedAt))&&typeof s.coverage==='string'&&s.coverage.length<2000;}
             function render(s){const values=tile.querySelectorAll('dd');values[0].textContent=s.count.toLocaleString();values[1].textContent=s.km.toLocaleString(undefined,{maximumFractionDigits:2});tile.querySelector('.activity-source').textContent='PaddleTrack · OC1 + OC6';status.textContent='Exported '+new Date(s.generatedAt).toLocaleString()+'. '+s.coverage;}
             function finish(){if(pending)clearInterval(pending.timer);pending=null;button.disabled=false;}
@@ -509,13 +509,18 @@ Starts in ${days}d ${hours}h ${minutes}m
                 if(pending)return;const popup=window.open(origin+'/dashboard-share.html','murray-paddle-totals');
                 if(!popup){status.textContent='Allow the PaddleTrack popup, then connect again.';return;}
                 const requestId=crypto.randomUUID(),started=Date.now();button.disabled=true;status.textContent='In PaddleTrack, click Share combined totals with Dashboard. Import a fresh phone snapshot there first if needed.';
-                const timer=setInterval(()=>{if(popup.closed||Date.now()-started>180000){finish();status.textContent='Paddle sharing was not confirmed. Connect again to retry.';return;}popup.postMessage({channel,type:'ping',requestId},origin);},700);
+                const timer=setInterval(()=>{if(popup.closed||Date.now()-started>900000){finish();status.textContent='Paddle sharing was not confirmed. Connect again to retry.';return;}popup.postMessage({channel,type:'ping',requestId},origin);},700);
                 pending={popup,requestId,timer};
             });
             window.addEventListener('message',event=>{const m=event.data;
+                if(lastReceipt&&event.origin===origin&&event.source===lastReceipt.popup&&m?.channel===channel&&m.type==='totals'&&m.requestId===lastReceipt.requestId){
+                    lastReceipt.popup.postMessage({channel,type:'received',requestId:lastReceipt.requestId},origin);return;
+                }
                 if(!pending||event.origin!==origin||event.source!==pending.popup||m?.channel!==channel||m.type!=='totals'||m.requestId!==pending.requestId)return;
                 if(!valid(m.summary)){finish();status.textContent='PaddleTrack totals could not be validated. Existing totals have been kept.';return;}
+                const receipt={popup:pending.popup,requestId:pending.requestId};
                 finish();render(m.summary);try{localStorage.setItem(key,JSON.stringify(m.summary));}catch{status.textContent+=' Browser save failed; reconnect after reloading.';}
+                lastReceipt=receipt;receipt.popup.postMessage({channel,type:'received',requestId:receipt.requestId},origin);
             });
         })();
         startup(); updateCountdown();
