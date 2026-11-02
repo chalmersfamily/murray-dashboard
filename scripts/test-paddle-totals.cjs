@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {paddleTotals}=require('../paddletrack-connection/public/dashboard-totals.js');
+const workout=(id,boat,km)=>({id,boat,km,start:1000,end:2000});
+const snapshot=seasons=>({app:'PaddleTrack',schemaVersion:1,exportedAtMs:1793577600000,seasons});
+const a=workout('a','OC1',3.5),b=workout('b','OC6',8);
+const s=paddleTotals(snapshot([{workouts:[a,b,workout('review','REVIEW',4),workout('excluded','EXCLUDE',5)]},{workouts:[a,workout('c','OC1',2)]}]));
+assert.equal(s.count,3);assert.equal(s.km,13.5);
+assert.equal(paddleTotals(snapshot([{workouts:[]}])).count,0);
+for(const data of [null,snapshot([{workouts:[a,{...a,km:99}]}]),snapshot([{workouts:[{...a,km:-1}]}]),snapshot([{workouts:[{...a,id:''}]}])])assert.throws(()=>paddleTotals(data));
+assert.deepEqual(Object.keys(s).sort(),['schema','generatedAt','count','km','coverage'].sort());
+console.log('Passed: combined OC1/OC6, all exported seasons, repeated IDs, review/excluded filtering, empty data, invalid/conflicting data and aggregate-only output.');
