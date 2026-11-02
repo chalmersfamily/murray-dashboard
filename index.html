@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.9.3</title>
+    <title>Murray's Big Plan v1.10.0</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -163,7 +163,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.9.3 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.10.0 <button onclick="signIn()">Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -206,17 +206,19 @@
     </div>
     <section class="activity-section" aria-labelledby="activityHeading">
         <div class="activity-heading"><h2 id="activityHeading">Activity totals <small>All time</small></h2>
-            <button id="refreshActivities" type="button">Refresh totals</button></div>
+            <div><button id="connectWinterFit" type="button">Connect WinterFit</button> <button id="connectPaddleTrack" type="button">Connect PaddleTrack</button> <button id="refreshActivities" type="button">Refresh Remy totals</button></div></div>
         <div class="activity-grid">
-            <article class="activity-tile"><h3>🚶 Walks</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">Strava · Connection needed</p></article>
-            <article class="activity-tile"><h3>🚴 Cycled</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">Strava · Connection needed</p></article>
-            <article class="activity-tile"><h3>🛶 Paddled</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">OC · Connection needed</p></article>
+            <article class="activity-tile"><h3>🚶 Walks</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
+            <article class="activity-tile"><h3>🚴 Cycled</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
+            <article class="activity-tile"><h3>🛶 Paddled</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">PaddleTrack · OC1 + OC6 · Connection needed</p></article>
             <article class="activity-tile"><h3>🐾 Remy Walks</h3><dl><div><dt>Total times</dt><dd id="remyTotalCount">—</dd></div><div><dt>Total km</dt><dd id="remyTotalKm">—</dd></div></dl><p id="remyActivityStatus" class="activity-source" role="status">Remy Walk · Not loaded</p></article>
-            <article class="activity-tile"><h3>⛷️ Skis</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">Strava · Connection needed</p></article>
-            <article class="activity-tile"><h3>🚣 Rowing</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">Strava · Connection needed</p></article>
+            <article class="activity-tile"><h3>⛷️ Skis</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
+            <article class="activity-tile"><h3>🚣 Rowing</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
             <article class="activity-tile"><h3>🏋️ Workouts</h3><dl><div><dt>Total times</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
         </div>
         <p class="subtitle activity-note">Totals come from the named apps. A dash means a total is not available yet.</p>
+        <p id="fitnessConnectionStatus" class="subtitle activity-note" role="status">Connect WinterFit, sign in, then share your saved activity totals.</p>
+        <p id="paddleConnectionStatus" class="subtitle activity-note" role="status">Connect PaddleTrack to share combined OC1 + OC6 totals from its latest imported snapshot.</p>
     </section>
     <section class="card ideas-capture" aria-labelledby="ideasHeading">
         <h2 id="ideasHeading">💡 Got an idea? Drop it here.</h2>
@@ -239,7 +241,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.9.3 • Idea Garden Connection • Confirmed Idea Delivery
+        v1.10.0 • Activity Totals • Garmin / Health Connect + PaddleTrack
         </div>
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -456,6 +458,66 @@ Starts in ${days}d ${hours}h ${minutes}m
         }
         document.getElementById('refreshActivities').addEventListener('click', refreshActivityTotals);
         refreshActivityTotals();
+        // WinterFit shares aggregate totals only, after explicit approval in its signed-in window.
+        (() => {
+            const origin='https://winter-fit.navybetta5.chatgpt.site',channel='murray-fitness-totals-v1';
+            const key='murray-dashboard-fitness-totals-v1',status=document.getElementById('fitnessConnectionStatus');
+            const connect=document.getElementById('connectWinterFit');
+            const tiles=[...document.querySelectorAll('.activity-tile')];
+            const positions={walks:0,cycled:1,skis:4,rowing:5,workouts:6};
+            let pending=null;
+            function valid(s){return s&&s.schema===1&&typeof s.generatedAt==='string'&&Number.isFinite(Date.parse(s.generatedAt))&&
+                typeof s.coverage==='string'&&s.coverage.length<2000&&s.activities&&Object.keys(positions).every(k=>{
+                    const a=s.activities[k];return a&&Number.isSafeInteger(a.count)&&a.count>=0&&
+                    (k==='workouts'||a.km===null||(typeof a.km==='number'&&Number.isFinite(a.km)&&a.km>=0));
+                });}
+            function render(s){for(const [name,index] of Object.entries(positions)){
+                const values=tiles[index].querySelectorAll('dd'),a=s.activities[name];
+                values[0].textContent=a.count.toLocaleString();
+                if(name!=='workouts')values[1].textContent=a.km===null?'—':a.km.toLocaleString(undefined,{maximumFractionDigits:2});
+                tiles[index].querySelector('.activity-source').textContent=name==='workouts'?'WinterFit · Saved strength sessions':'Garmin / Health Connect · WinterFit';
+            }status.textContent='Shared '+new Date(s.generatedAt).toLocaleString()+'. '+s.coverage;}
+            for(const index of Object.values(positions))tiles[index].querySelector('.activity-source').textContent='WinterFit · Connection needed';
+            try{const raw=localStorage.getItem(key);if(raw){const saved=JSON.parse(raw);if(valid(saved))render(saved);else status.textContent='Saved totals could not be read. Connect WinterFit to refresh; existing data has been kept.';}}catch{status.textContent='Saved totals unavailable. Connect WinterFit to load them.';}
+            function finish(){if(pending)clearInterval(pending.timer);pending=null;connect.disabled=false;}
+            connect.addEventListener('click',()=>{
+                if(pending)return;
+                const popup=window.open(origin+'/dashboard-share','murray-winterfit-totals');
+                if(!popup){status.textContent='Allow the WinterFit popup, then click Connect WinterFit again.';return;}
+                const requestId=crypto.randomUUID(),started=Date.now();
+                connect.disabled=true;status.textContent='Sign in to WinterFit, then click Share totals with Dashboard.';
+                const timer=setInterval(()=>{if(popup.closed||Date.now()-started>180000){finish();status.textContent='Sharing was not confirmed. Connect WinterFit to retry.';return;}
+                    popup.postMessage({channel,type:'ping',requestId},origin);},700);
+                pending={popup,requestId,timer};
+            });
+            window.addEventListener('message',event=>{
+                const m=event.data;if(!pending||event.origin!==origin||event.source!==pending.popup||m?.channel!==channel||m.type!=='totals'||m.requestId!==pending.requestId)return;
+                if(!valid(m.summary)){finish();status.textContent='WinterFit returned unsupported totals. Existing totals have been kept.';return;}
+                finish();render(m.summary);
+                try{localStorage.setItem(key,JSON.stringify(m.summary));}catch{status.textContent+=' Totals could not be saved in this browser; reconnect after reloading.';}
+            });
+        })();
+        (()=>{
+            const origin='https://paddletrack-web.chalmersfamily.workers.dev',channel='murray-paddle-totals-v1',key='murray-dashboard-paddle-totals-v1';
+            const button=document.getElementById('connectPaddleTrack'),status=document.getElementById('paddleConnectionStatus');
+            const tile=document.querySelectorAll('.activity-tile')[2];let pending=null;
+            function valid(s){return s&&s.schema===1&&Number.isSafeInteger(s.count)&&s.count>=0&&typeof s.km==='number'&&Number.isFinite(s.km)&&s.km>=0&&typeof s.generatedAt==='string'&&Number.isFinite(Date.parse(s.generatedAt))&&typeof s.coverage==='string'&&s.coverage.length<2000;}
+            function render(s){const values=tile.querySelectorAll('dd');values[0].textContent=s.count.toLocaleString();values[1].textContent=s.km.toLocaleString(undefined,{maximumFractionDigits:2});tile.querySelector('.activity-source').textContent='PaddleTrack · OC1 + OC6';status.textContent='Exported '+new Date(s.generatedAt).toLocaleString()+'. '+s.coverage;}
+            function finish(){if(pending)clearInterval(pending.timer);pending=null;button.disabled=false;}
+            try{const raw=localStorage.getItem(key);if(raw){const s=JSON.parse(raw);if(valid(s))render(s);}}catch{status.textContent='Saved paddle totals unavailable. Connect PaddleTrack to refresh.';}
+            button.addEventListener('click',()=>{
+                if(pending)return;const popup=window.open(origin+'/dashboard-share.html','murray-paddle-totals');
+                if(!popup){status.textContent='Allow the PaddleTrack popup, then connect again.';return;}
+                const requestId=crypto.randomUUID(),started=Date.now();button.disabled=true;status.textContent='In PaddleTrack, click Share combined totals with Dashboard. Import a fresh phone snapshot there first if needed.';
+                const timer=setInterval(()=>{if(popup.closed||Date.now()-started>180000){finish();status.textContent='Paddle sharing was not confirmed. Connect again to retry.';return;}popup.postMessage({channel,type:'ping',requestId},origin);},700);
+                pending={popup,requestId,timer};
+            });
+            window.addEventListener('message',event=>{const m=event.data;
+                if(!pending||event.origin!==origin||event.source!==pending.popup||m?.channel!==channel||m.type!=='totals'||m.requestId!==pending.requestId)return;
+                if(!valid(m.summary)){finish();status.textContent='PaddleTrack totals could not be validated. Existing totals have been kept.';return;}
+                finish();render(m.summary);try{localStorage.setItem(key,JSON.stringify(m.summary));}catch{status.textContent+=' Browser save failed; reconnect after reloading.';}
+            });
+        })();
         startup(); updateCountdown();
     </script>
 </body>
