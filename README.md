@@ -1,8 +1,18 @@
 Murray's Big Plan
-Version: 1.9.3
+Version: 1.10.0
 Status: Active Development
 Owner: Murray Chalmers
 Production Branch: main
+
+Activity totals (v1.10.0)
+
+The former Projects/Ideas/Training/Life row is replaced by seven all-time activity tiles. Walks, Cycled, Skis and Rowing use saved WinterFit records imported from Garmin through Android Health Connect. Workouts counts saved WinterFit strength sessions (not every imported activity). Connect WinterFit opens the private signed-in app; Share totals with Dashboard sends aggregate values only. Shared totals are saved in this browser and show their timestamp and history-coverage limitation. Missing distance remains unavailable rather than being counted as zero.
+
+Paddled uses PaddleTrack: combined OC1 + OC6 session count and kilometres across all seasons in its imported web snapshot. Connect PaddleTrack opens its sharing page. Export a fresh web sync file from your phone and import it into PaddleTrack Web first; share combined totals afterward. Repeated workout IDs count once and conflicting repeats require correction. Review/excluded records are omitted. OC6 Performance Tracker is not used.
+
+Remy Walks reads the existing read-only Remy cloud snapshot and displays its export time. Refresh Remy totals retries it. No source app data is changed by sharing. Browser-local Dashboard totals do not sync between devices. Complete lifetime coverage depends on available/imported source history; sharing is manual, not background sync.
+
+WinterFit phone update: Phone Update/WinterFit-v2.5.1-import-fix.apk in the local project folder. Update the existing app in place. Its signing certificate matches the earlier supplied WinterFit APK. Export a backup first; never uninstall or clear storage to bypass an update problem. Then Menu → Health Connect → Allow older activity history (if supported), allow workout stats access, Refresh workouts, then Desktop sync → Sync this phone. In the hosted Dashboard click Connect WinterFit and share totals. Older-history access is optional; without it the reader checks the last 30 days and preserves previously imported history. Owner confirmed the 2.5.1 import shortcut works and imported activities appear on both phone and computer. Dashboard sharing acceptance remains to be checked.
 
 A personal productivity command center built around Microsoft 365, designed to provide a complete daily briefing from a single screen.
 
@@ -278,4 +288,3 @@ into a single dashboard that can be reviewed in under 30 seconds and acted upon 
 
 Project Motto
 One screen. One glance. One place to run life.
-
