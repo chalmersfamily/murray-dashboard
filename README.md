@@ -1,10 +1,12 @@
 Murray's Big Plan
-Version: 1.10.0
+Version: 1.10.1
 Status: Active Development
 Owner: Murray Chalmers
 Production Branch: main
 
 Activity totals (v1.10.0)
+
+v1.10.1: PaddleTrack sharing now waits for a Dashboard receipt, retries briefly if a message is lost, and explains how to reconnect if the Dashboard was refreshed or the connection expired. The Dashboard keeps a PaddleTrack connection open for up to 15 minutes. Sharing does not claim success until the tile has accepted the totals.
 
 The former Projects/Ideas/Training/Life row is replaced by seven all-time activity tiles. Walks, Cycled, Skis and Rowing use saved WinterFit records imported from Garmin through Android Health Connect. Workouts counts saved WinterFit strength sessions (not every imported activity). Connect WinterFit opens the private signed-in app; Share totals with Dashboard sends aggregate values only. Shared totals are saved in this browser and show their timestamp and history-coverage limitation. Missing distance remains unavailable rather than being counted as zero.
 
