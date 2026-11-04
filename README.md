@@ -1,6 +1,8 @@
 Murray's Big Plan
-Version: 1.10.1
+Version: 1.10.2
 Status: Active Development
+
+v1.10.2 adds a persistent bottom navigation bar for Dashboard, Daily Planner and Idea Garden. Planner and Garden open in new tabs; the Dashboard button returns to the top. The bar stays visible while scrolling and adapts to small screens.
 Owner: Murray Chalmers
 Production Branch: main
 

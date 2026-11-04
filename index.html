@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.10.1</title>
+    <title>Murray's Big Plan v1.10.2</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -13,7 +13,7 @@
             font-family: Arial, sans-serif;
             max-width: 1200px;
             margin: auto;
-            padding: 20px
+            padding: 20px 20px calc(110px + env(safe-area-inset-bottom, 0px))
         }
 
         .card,
@@ -92,6 +92,7 @@
         }
 
         .modal {
+            z-index: 20;
             display: none;
             position: fixed;
             inset: 0;
@@ -129,6 +130,27 @@
         #ideasList { max-height: 260px; overflow-y: auto; margin-top: 12px; }
         .ideas-capture :focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
 
+        .daily-apps {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+            background: #0f172a; border-top: 1px solid #475569;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -4px 20px #0004;
+        }
+        .daily-apps-inner { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 680px; margin: auto; }
+        .daily-apps a {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 48px; padding: 4px 8px; box-sizing: border-box;
+            border: 1px solid #475569; border-radius: 10px; background: #1e293b;
+            color: #e2e8f0; text-decoration: none; font-size: 15px; font-weight: bold; text-align: center;
+        }
+        .daily-apps a[aria-current] { background: #164e63; border-color: #38bdf8; color: #fff; }
+        .daily-apps a:hover { background: #334155; border-color: #38bdf8; }
+        .daily-apps a:focus-visible { outline: 3px solid #38bdf8; outline-offset: 3px; }
+        @media(max-width:420px) {
+            .daily-apps a { flex-direction: column; gap: 3px; font-size: 12px; min-height: 60px; }
+        }
+        @media print { .daily-apps { display: none; } body { padding-bottom: 20px; } }
+
         .activity-section { margin-bottom: 20px; }
         .activity-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         .activity-heading h2 { font-size: 20px; }
@@ -163,7 +185,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.10.1 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.10.2 <button onclick="signIn()">Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -241,8 +263,15 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.10.1 • Activity Totals • Garmin / Health Connect + PaddleTrack
+        v1.10.2 • Daily app shortcuts • Activity Totals
         </div>
+    <nav class="daily-apps" aria-label="Daily apps">
+        <div class="daily-apps-inner">
+            <a href="#" aria-current="page"><span aria-hidden="true">🏠</span><span>Dashboard</span></a>
+            <a href="https://daily-planner-launchpad.navybetta5.chatgpt.site/" target="_blank" rel="noopener" aria-label="Daily Planner (opens in a new tab)"><span aria-hidden="true">📅</span><span>Daily Planner ↗</span></a>
+            <a href="https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas" target="_blank" rel="noopener" aria-label="Idea Garden (opens in a new tab)"><span aria-hidden="true">🌱</span><span>Idea Garden ↗</span></a>
+        </div>
+    </nav>
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <h2>Settings</h2><label>Projects URL</label><input id="projectsUrl"><label>Ideas URL</label><input
