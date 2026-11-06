@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.10.4</title>
+    <title>Murray's Big Plan v1.10.5</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -189,7 +189,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.10.4 <button id="signInButton" onclick="signIn()" disabled>Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.10.5 <button id="signInButton" onclick="signIn()" disabled>Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -267,7 +267,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.10.4 • Daily app shortcuts • Activity Totals
+        v1.10.5 • Daily app shortcuts • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -393,7 +393,7 @@ Starts in ${days}d ${hours}h ${minutes}m
             document.getElementById('tasksContainer').innerHTML = html || 'No active tasks';
             document.getElementById('myDayCount').innerText = overdue.length + today.length + upcoming.length; document.getElementById('overdueCount').innerText = overdue.length; document.getElementById('briefingText').innerText = `${overdue.length + today.length + upcoming.length} active tasks • ${today.length} due today • ${overdue.length} overdue • ${document.getElementById('calendarCount').innerText} events upcoming`;
         }
-        const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', trainingUrl: 'https://winter-fit.navybetta5.chatgpt.site/', lifeUrl: 'https://job-jar.navybetta5.chatgpt.site/' };
+        const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', trainingUrl: 'https://winter-fit.mgchalmers.chatgpt.site/', lifeUrl: 'https://job-jar.navybetta5.chatgpt.site/' };
         function loadSettings() { for (let k in defaults) { document.getElementById(k).value = localStorage.getItem(k) || defaults[k]; } }
         function saveSettings() { for (let k in defaults) { localStorage.setItem(k, document.getElementById(k).value); } alert('Saved'); }
         function openLink(k) { window.open(localStorage.getItem(k) || defaults[k], '_blank'); }
@@ -553,7 +553,7 @@ Starts in ${days}d ${hours}h ${minutes}m
         refreshActivityTotals();
         // WinterFit shares aggregate totals only, after explicit approval in its signed-in window.
         (() => {
-            const origin='https://winter-fit.navybetta5.chatgpt.site',channel='murray-fitness-totals-v1';
+            const origin='https://winter-fit.mgchalmers.chatgpt.site',channel='murray-fitness-totals-v1';
             const key='murray-dashboard-fitness-totals-v1',status=document.getElementById('fitnessConnectionStatus');
             const connect=document.getElementById('connectWinterFit');
             const tiles=[...document.querySelectorAll('.activity-tile')];
