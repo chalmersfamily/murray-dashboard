@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.10.3</title>
+    <title>Murray's Big Plan v1.10.4</title>
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -189,7 +189,7 @@
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.10.3 <button onclick="signIn()">Sign In</button><button class="gear"
+    <h1>Murray's Big Plan v1.10.4 <button id="signInButton" onclick="signIn()" disabled>Sign In</button><button class="gear"
             onclick="openSettings()">⚙️</button></h1>
     <div id="status" class="subtitle">Initializing...</div>
     <div class="card">
@@ -267,7 +267,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.10.3 • Daily app shortcuts • Activity Totals
+        v1.10.4 • Daily app shortcuts • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -287,14 +287,73 @@
     </div>
     <script>
         let pca = null;
-        const msalConfig = { auth: { clientId: '7a533e96-1dc4-4f59-98ea-2564c7b4d0e1', authority: 'https://login.microsoftonline.com/common', redirectUri: window.location.href } };
-        async function startup() { try { pca = new msal.PublicClientApplication(msalConfig); await pca.initialize(); const accts = pca.getAllAccounts(); if (accts.length) { document.getElementById('status').innerText = 'Recovered session: ' + accts[0].username; await loadDashboard(); } else { document.getElementById('status').innerText = 'Ready for sign in'; } } catch (e) { document.getElementById('status').innerHTML = '<span class=error>' + e + '</span>'; } }
-        async function signIn() { const r = await pca.loginPopup({ scopes: ['openid', 'profile', 'User.Read', 'Calendars.Read', 'Tasks.Read'] }); document.getElementById('status').innerText = r.account.username; await loadDashboard(); }
-        async function loadDashboard() { try { const a = pca.getAllAccounts()[0]; if (!a) return; let t; try { t = await pca.acquireTokenSilent({ scopes: ['Calendars.Read', 'Tasks.Read'], account: a }); } catch { t = await pca.acquireTokenPopup({ scopes: ['Calendars.Read', 'Tasks.Read'] }); } const h = { Authorization: 'Bearer ' + t.accessToken }; await Promise.all([loadCalendar(h), loadTodo(h)]);document.getElementById(
-'lastUpdated'
-).innerText =
-'Last refreshed: ' +
-new Date().toLocaleTimeString(); } catch (e) { document.getElementById('briefingText').innerHTML = '<span class=error>Dashboard load failed</span>'; } }
+        const signInButton = document.getElementById('signInButton');
+        const signInStatus = document.getElementById('status');
+        const graphScopes = ['Calendars.Read', 'Tasks.Read'];
+        const msalConfig = {
+            auth: {
+                clientId: '7a533e96-1dc4-4f59-98ea-2564c7b4d0e1',
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: window.location.origin + window.location.pathname,
+                navigateToLoginRequestUrl: false
+            }
+        };
+
+        function showSignInError(error) {
+            const code = error.errorCode || error.name;
+            signInStatus.textContent = 'Microsoft sign-in could not finish. Try again in Edge.'
+                + (code ? ' (' + code + ')' : '');
+        }
+
+        async function startup() {
+            try {
+                pca = new msal.PublicClientApplication(msalConfig);
+                await pca.initialize();
+                const response = await pca.handleRedirectPromise();
+                const account = response?.account || pca.getAllAccounts()[0];
+                if (account) {
+                    await loadDashboard(account, response?.accessToken);
+                } else {
+                    signInStatus.textContent = 'Ready for sign in';
+                }
+                signInButton.disabled = false;
+            } catch (error) {
+                showSignInError(error);
+                signInButton.disabled = false;
+            }
+        }
+
+        async function signIn() {
+            if (!pca || signInButton.disabled) return;
+            signInButton.disabled = true;
+            signInStatus.textContent = 'Opening Microsoft sign-in…';
+            try {
+                await pca.loginRedirect({ scopes: ['openid', 'profile', 'User.Read', ...graphScopes] });
+            } catch (error) {
+                showSignInError(error);
+                signInButton.disabled = false;
+            }
+        }
+
+        async function loadDashboard(account, accessToken) {
+            if (!accessToken) {
+                try {
+                    const token = await pca.acquireTokenSilent({ scopes: graphScopes, account });
+                    accessToken = token.accessToken;
+                } catch {
+                    signInStatus.textContent = 'Select Sign In to reconnect your Microsoft account.';
+                    return;
+                }
+            }
+            signInStatus.textContent = account.username;
+            try {
+                const headers = { Authorization: 'Bearer ' + accessToken };
+                await Promise.all([loadCalendar(headers), loadTodo(headers)]);
+                document.getElementById('lastUpdated').textContent = 'Last refreshed: ' + new Date().toLocaleTimeString();
+            } catch {
+                document.getElementById('briefingText').textContent = 'Dashboard load failed. Try signing in again.';
+            }
+        }
         async function loadCalendar(headers) { const now = new Date(); const future = new Date(); future.setDate(now.getDate() + 7); const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now.toISOString()}&endDateTime=${future.toISOString()}`, { headers }); const d = await r.json(); const ev = d.value || []; document.getElementById('calendarCount').innerText = ev.length; let html = ''; ev.slice(0, 10).forEach(e => { html += `<p><strong>${e.subject}</strong><br>${new Date(e.start.dateTime).toLocaleString()}</p>` }); document.getElementById('calendarContainer').innerHTML = html || 'No events found'; if (ev.length) { const n = ev.sort((a, b) => new Date(a.start.dateTime) - new Date(b.start.dateTime))[0]; const diff =
 new Date(n.start.dateTime) - new Date();
 
@@ -562,3 +621,4 @@ Starts in ${days}d ${hours}h ${minutes}m
 </body>
 
 </html>
+
