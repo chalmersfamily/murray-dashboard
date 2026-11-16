@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const root=path.join(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const start=html.indexOf("        (()=>{\n            const origin='https://paddletrack");
 assert(start>0);
-const receiver=html.slice(start,html.indexOf('        startup(); updateCountdown();',start));
+const receiver=html.slice(start,html.indexOf("        document.addEventListener('DOMContentLoaded', startup);",start));
 const sender=fs.readFileSync(path.join(root,'paddletrack-connection/public/dashboard-share.js'),'utf8');
 function fixture(){
  const queue=[],mainEvents={},shareEvents={},mainTimers=new Map(),shareTimers=new Map(),stored={},elements={},dd=[{},{}],source={};let time=0,id=0;
