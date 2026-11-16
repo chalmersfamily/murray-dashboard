@@ -12,7 +12,7 @@ function fixture(blocked=false){
 }
 const summary={schema:1,generatedAt:'2026-11-02T10:00:00Z',coverage:'Saved records only',activities:Object.fromEntries(['walks','cycled','skis','rowing'].map(k=>[k,{count:2,km:1.5}]))};summary.activities.workouts={count:3};
 const f=fixture();f.listeners.connectWinterFitclick();
-const event={origin:'https://winter-fit.navybetta5.chatgpt.site',source:f.popup,data:{channel:'murray-fitness-totals-v1',type:'totals',requestId:'12345678-1234-1234-1234-123456789abc',summary}};
+const event={origin:'https://winter-fit.mgchalmers.chatgpt.site',source:f.popup,data:{channel:'murray-fitness-totals-v1',type:'totals',requestId:'12345678-1234-1234-1234-123456789abc',summary}};
 for(const spoof of [{...event,origin:'https://evil.example'},{...event,source:{}},{...event,data:{...event.data,requestId:'wrong'}}])f.listeners.message(spoof);
 assert.equal(f.tiles[0].dd[0].textContent,undefined);
 f.listeners.message(event);assert.equal(f.tiles[0].dd[0].textContent,'2');assert.equal(f.tiles[6].dd[0].textContent,'3');assert.equal(f.elements.connectWinterFit.disabled,false);assert.equal(Object.keys(f.stored).length,1);

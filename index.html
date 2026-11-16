@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.10.5</title>
-    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
+    <title>Murray's Big Plan v1.11.0</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
             background: #0f172a;
@@ -185,34 +185,151 @@
                 margin-bottom: 15px
             }
         }
+
+        .dashboard-header, .dashboard-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .dashboard-header { justify-content: space-between; }
+        .dashboard-header h1 { margin: 0; font-size: clamp(24px, 4vw, 34px); }
+        #status { margin: 8px 0 16px; overflow-wrap: anywhere; }
+        .dashboard-actions button { min-height: 44px; padding: 6px 12px; border: 1px solid #64748b;
+            border-radius: 8px; background: #0f172a; color: #f8fafc; font: inherit; cursor: pointer; }
+        .dashboard-actions button:disabled { color: #94a3b8; cursor: default; }
+        .dashboard-actions button:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+        .daily-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 14px; align-items: start; }
+        .daily-overview h2, .tasks-panel h2 { margin: 0 0 10px; font-size: 1.2rem; }
+        .daily-overview .card, .tasks-panel { overflow-wrap: anywhere; }
+        #briefingText, #calendarContainer p { line-height: 1.45; }
+        #draftStatus:empty, #lastUpdated:empty { display: none; }
+        #lastUpdated { margin-top: 10px; }
+        .top-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+        .top-card { min-width: 0; min-height: 0; margin: 0; padding: 12px; }
+        .top-card h3 { margin: 0 0 6px; font-size: .95rem; }
+        .top-card .big { font-size: 1.65rem; overflow-wrap: anywhere; }
+        #calendarContainer h3 { margin: 16px 0 6px; font-size: 1rem; color: #bae6fd; }
+        #calendarContainer p { margin: 6px 0; }
+        @media(max-width: 680px) {
+            body { padding: 12px 12px calc(110px + env(safe-area-inset-bottom, 0px)); }
+            .daily-overview { grid-template-columns: minmax(0, 1fr); gap: 0; }
+            .top-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .daily-apps-inner { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+            .daily-apps a { flex-direction: column; gap: 3px; font-size: 11px; padding: 4px 2px; overflow-wrap: anywhere; }
+        }
+        @media print { body { padding-bottom: 20px; } }
+
+        .top-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        .top-row .top-card { border: 1px solid #475569; border-top: 3px solid var(--accent, #64748b); }
+        .top-row .top-card .big { color: var(--accent, #bae6fd); }
+        .task-active { --accent: #7dd3fc; }
+        .task-due { --accent: #fcd34d; }
+        .task-overdue { --accent: #fda4af; }
+        .agenda-list, .task-list { display: grid; gap: 7px; list-style: none; padding: 0; margin: 0; }
+        .agenda-item, .task-item { border-radius: 10px; padding: 9px 12px; overflow-wrap: anywhere; }
+        .agenda-item { background: var(--event-fill, #172f48); border-inline-start: 4px solid var(--event-color, #7dd3fc); }
+        .agenda-shared { --event-fill: #173a35; --event-color: #86efac; }
+        .agenda-both { --event-fill: #332b4c; --event-color: #c4b5fd; }
+        .row-details { display: block; margin-top: 4px; font-size: .85rem; color: #cbd5e1; }
+        .task-item { background: #172438; border: 1px solid #475569; }
+        .task-item.task-important { border-inline-start: 4px solid #fda4af; }
+        .task-group-title { margin: 14px 0 7px; font-size: 1rem; color: #e2e8f0; }
+        @media (max-width: 680px) { .top-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        .agenda-week { margin-top: 14px; border-top: 1px solid #475569; }
+        .agenda-week summary { padding: 12px 0; color: #bae6fd; font-weight: bold; cursor: pointer; }
+        .agenda-week summary:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+
+        .next-event:has(.agenda-shared .next-event-time) { border-inline-start-color: #86efac; }
+        .next-event:has(.agenda-both .next-event-time) { border-inline-start-color: #c4b5fd; }
+        .next-event-time { display: block; font-size: clamp(1.4rem, 4vw, 1.95rem);
+            line-height: 1.2; color: var(--event-color, #7dd3fc); }
+        .next-event-title { margin: 7px 0 0; font-weight: bold; }
+        .agenda-date { color: #cbd5e1; font-size: .8rem; font-weight: normal; margin-inline-start: .55rem; }
+
+        .section-links { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+        .section-links a { display: inline-flex; align-items: center; min-height: 44px;
+            padding: 0 12px; border: 1px solid #475569; border-radius: 8px;
+            color: #bae6fd; text-decoration: none; }
+        .section-links a:hover { background: #1e293b; }
+        .section-links a:focus-visible, .later-tasks summary:focus-visible {
+            outline: 2px solid #38bdf8; outline-offset: 2px; }
+        #outlook-agenda, #dashboard-tasks, #dashboard-activity { scroll-margin-top: 12px; }
+        #briefingText { white-space: pre-line; font-weight: 600; line-height: 1.6; }
+        .later-tasks { margin-top: 14px; border-top: 1px solid #475569; }
+        .later-tasks summary { margin: 0; padding: 12px 0; color: #bae6fd; cursor: pointer; font-weight: bold; }
+
+        .briefing-card { border: 1px solid #38516b; background: linear-gradient(130deg, #223951, #1e293b 65%); }
+        .briefing-card #briefingText { margin: 8px 0 14px; }
+        .briefing-card #refreshBriefing:enabled { background: #bae6fd; border-color: #bae6fd; color: #0f172a; }
+        .activity-heading > div { display: flex; flex-wrap: wrap; gap: 6px; }
+        .activity-heading button { min-height: 44px; }
+        .activity-tile { border: 1px solid #475569; }
+        .activity-tile h3 { margin-bottom: 12px; }
+        .activity-tile dd { font-variant-numeric: tabular-nums; }
+        @media (max-width: 680px) { .activity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .todo-link { color: #bae6fd; }
+        .remy-chart { margin-top: 14px; }
+        .remy-chart h3 { margin: 0 0 6px; }
+        .remy-chart ol { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 4px; list-style: none; padding: 0; margin: 12px 0 0; }
+        .remy-chart li { min-width: 0; text-align: center; font-size: clamp(.65rem, 2.7vw, .9rem); }
+        .remy-bar-track { height: 72px; display: flex; align-items: end; justify-content: center;
+            border-bottom: 1px solid #64748b; margin: 5px 0; }
+        .remy-bar { background: #7dd3fc; width: min(75%, 40px); border-radius: 4px 4px 0 0; }
     </style>
 </head>
 
 <body>
-    <h1>Murray's Big Plan v1.10.5 <button id="signInButton" onclick="signIn()" disabled>Sign In</button><button class="gear"
-            onclick="openSettings()">⚙️</button></h1>
+    <header class="dashboard-header">
+        <h1>Murray's Big Plan</h1>
+        <div class="dashboard-actions">
+            <button id="signInButton" type="button" onclick="signIn()" disabled>Sign In</button>
+            <button type="button" onclick="openSettings()">Settings</button>
+        </div>
+    </header>
     <div id="status" class="subtitle">Initializing...</div>
-    <div class="card">
+    <main>
+        <nav class="section-links" aria-label="Jump to dashboard section">
+            <a href="#outlook-agenda">Agenda</a>
+            <a href="#dashboard-tasks">Tasks</a>
+            <a href="#dashboard-activity">Activity</a>
+        </nav>
+        <div class="daily-overview">
+            <div>
+    <div class="card briefing-card">
         <h2>Today's Briefing</h2>
-        <p id="briefingText">Loading briefing...</p>
+        <p id="briefingText" role="status">Sign in to load your morning briefing.</p>
+        <div class="dashboard-actions">
+        <button id="refreshBriefing" type="button" disabled>Refresh briefing</button>
+        <button id="draftBriefing" type="button" disabled>Save Outlook draft</button>
+        <button id="connectDrafts" type="button" hidden>Connect Outlook Drafts</button>
+        </div>
+        <p id="draftStatus" class="subtitle" role="status"></p>
         <div id="lastUpdated" class="subtitle"></div>
     </div>
     <div class="card next-event">
         <h2>Next Event</h2>
         <div id="nextEventCard">No events loaded.</div>
     </div>
-    <div class="top-row">
-        <div class="top-card">
-            <h3>My Day</h3>
-            <div class="big" id="myDayCount">0</div>
+            </div>
+        <div class="calendar-panel card" id="outlook-agenda">
+            <h2>Outlook Agenda</h2>
+            <div id="calendarContainer">Sign in to see your Outlook agenda.</div>
         </div>
-        <div class="top-card">
+        </div>
+    <div class="top-row">
+        <div class="top-card task-active">
+            <h3>Active tasks</h3>
+            <div class="big" id="myDayCount">—</div>
+        </div>
+        <div class="top-card task-due">
+            <h3>Due Today</h3>
+            <div class="big" id="dueTodayCount">—</div>
+        </div>
+        <div class="top-card task-overdue">
             <h3>Overdue</h3>
-            <div class="big" id="overdueCount">0</div>
+            <div class="big" id="overdueCount">—</div>
         </div>
         <div class="top-card">
             <h3>Upcoming Events</h3>
-            <div class="big" id="calendarCount">0</div>
+            <div class="big" id="calendarCount">—</div>
         </div>
         <div class="top-card">
             <h3>Countdown</h3>
@@ -220,17 +337,13 @@
             <div class="big" id="countdownDays">0</div><button onclick="editCountdown()">Edit</button>
         </div>
     </div>
-    <div class="main-row">
-        <div class="tasks-panel card">
+        <div class="tasks-panel card" id="dashboard-tasks">
             <h2>Tasks</h2>
-            <div id="tasksContainer" class="loading">Loading tasks...</div>
+            <p class="subtitle">Timed alerts come from Microsoft To Do. <a class="todo-link" href="https://to-do.live.com/tasks/" target="_blank" rel="noopener">Open Microsoft To Do ↗</a></p>
+            <div id="tasksContainer">Sign in to see your tasks.</div>
         </div>
-        <div class="calendar-panel card">
-            <h2>Upcoming Events</h2>
-            <div id="calendarContainer">Loading calendar...</div>
-        </div>
-    </div>
-    <section class="activity-section" aria-labelledby="activityHeading">
+    </main>
+    <section class="activity-section" id="dashboard-activity" aria-labelledby="activityHeading">
         <div class="activity-heading"><h2 id="activityHeading">Activity totals <small>All time</small></h2>
             <div><button id="connectWinterFit" type="button">Connect WinterFit</button> <button id="connectPaddleTrack" type="button">Connect PaddleTrack</button> <button id="refreshActivities" type="button">Refresh Remy totals</button></div></div>
         <div class="activity-grid">
@@ -242,6 +355,11 @@
             <article class="activity-tile"><h3>🚣 Rowing</h3><dl><div><dt>Total times</dt><dd>—</dd></div><div><dt>Total km</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
             <article class="activity-tile"><h3>🏋️ Workouts</h3><dl><div><dt>Total times</dt><dd>—</dd></div></dl><p class="activity-source">WinterFit · Connection needed</p></article>
         </div>
+        <section class="card remy-chart" aria-labelledby="remyChartHeading">
+            <h3 id="remyChartHeading">Remy Walk · Last 7 days</h3>
+            <p id="remyChartStatus" class="subtitle" role="status">Loading walk history…</p>
+            <ol id="remyChartDays" aria-label="Daily kilometres in Kelowna time"></ol>
+        </section>
         <p class="subtitle activity-note">Totals come from the named apps. A dash means a total is not available yet.</p>
         <p id="fitnessConnectionStatus" class="subtitle activity-note" role="status">Connect WinterFit, sign in, then share your saved activity totals.</p>
         <p id="paddleConnectionStatus" class="subtitle activity-note" role="status">Connect PaddleTrack to share combined OC1 + OC6 totals from its latest imported snapshot.</p>
@@ -267,12 +385,12 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.10.5 • Daily app shortcuts • Activity Totals
+        v1.11.0 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
             <a href="#" aria-current="page"><span aria-hidden="true">🏠</span><span>Dashboard</span></a>
-            <a href="https://daily-planner-launchpad.navybetta5.chatgpt.site/" target="_blank" rel="noopener" aria-label="Daily Planner (opens in a new tab)"><span aria-hidden="true">📅</span><span>Daily Planner ↗</span></a>
+            <a href="https://daily-planner-launchpad.navybetta5.chatgpt.site/" target="_blank" rel="noopener" aria-label="Murray's Apps (opens in a new tab)"><span aria-hidden="true">📅</span><span>Murray's Apps ↗</span></a>
             <a href="https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas" target="_blank" rel="noopener" aria-label="Idea Garden (opens in a new tab)"><span aria-hidden="true">🌱</span><span>Idea Garden ↗</span></a>
             <a href="https://mask-projecttrack.pages.dev/" target="_blank" rel="noopener" aria-label="ProjectTrack (opens in a new tab)"><span aria-hidden="true">📋</span><span>ProjectTrack ↗</span></a>
         </div>
@@ -335,64 +453,438 @@
             }
         }
 
-        async function loadDashboard(account, accessToken) {
-            if (!accessToken) {
-                try {
-                    const token = await pca.acquireTokenSilent({ scopes: graphScopes, account });
-                    accessToken = token.accessToken;
-                } catch {
-                    signInStatus.textContent = 'Select Sign In to reconnect your Microsoft account.';
-                    return;
-                }
-            }
-            signInStatus.textContent = account.username;
-            try {
-                const headers = { Authorization: 'Bearer ' + accessToken };
-                await Promise.all([loadCalendar(headers), loadTodo(headers)]);
-                document.getElementById('lastUpdated').textContent = 'Last refreshed: ' + new Date().toLocaleTimeString();
-            } catch {
-                document.getElementById('briefingText').textContent = 'Dashboard load failed. Try signing in again.';
-            }
-        }
-        async function loadCalendar(headers) { const now = new Date(); const future = new Date(); future.setDate(now.getDate() + 7); const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now.toISOString()}&endDateTime=${future.toISOString()}`, { headers }); const d = await r.json(); const ev = d.value || []; document.getElementById('calendarCount').innerText = ev.length; let html = ''; ev.slice(0, 10).forEach(e => { html += `<p><strong>${e.subject}</strong><br>${new Date(e.start.dateTime).toLocaleString()}</p>` }); document.getElementById('calendarContainer').innerHTML = html || 'No events found'; if (ev.length) { const n = ev.sort((a, b) => new Date(a.start.dateTime) - new Date(b.start.dateTime))[0]; const diff =
-new Date(n.start.dateTime) - new Date();
 
-const days =
-Math.floor(diff / 86400000);
+let accountForRefresh;
+let refreshing = false;
+let weekExpanded = false;
+const expandedTaskGroups = new Set();
+const briefingZone = 'America/Vancouver';
+const refreshButton = document.getElementById('refreshBriefing');
+const draftButton = document.getElementById('draftBriefing');
+const draftStatus = document.getElementById('draftStatus');
+const connectDrafts = document.getElementById('connectDrafts');
+let drafting = false;
 
-const hours =
-Math.floor(
-(diff % 86400000) / 3600000
-);
-
-const minutes =
-Math.floor(
-(diff % 3600000) / 60000
-);
-document.getElementById('nextEventCard').innerHTML=
-`
-<div style="font-size:22px;font-weight:bold;">
-${n.subject}
-</div>
-
-<div style="margin-top:10px;">
-${new Date(n.start.dateTime).toLocaleString()}
-</div>
-
-<div style="margin-top:10px;color:#38bdf8;">
-Starts in ${days}d ${hours}h ${minutes}m
-</div>
-`;
- } 
+function updateBriefingButtons() {
+    refreshButton.disabled = !accountForRefresh || refreshing || drafting;
+    draftButton.disabled = refreshButton.disabled;
+    connectDrafts.disabled = refreshButton.disabled;
 }
-        async function loadTodo(headers) {
-            const lr = await fetch('https://graph.microsoft.com/v1.0/me/todo/lists', { headers }); const ld = await lr.json(); let overdue = [], today = [], upcoming = []; const now = new Date(); for (const list of (ld.value || [])) { const tr = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${list.id}/tasks`, { headers }); const td = await tr.json(); (td.value || []).filter(t => t.status !== 'completed').forEach(t => { if (!t.dueDateTime) { upcoming.push(t); return; } const due = new Date(t.dueDateTime.dateTime); if (due < now) overdue.push(t); else if (due.toDateString() === now.toDateString()) today.push(t); else upcoming.push(t); }); }
-            let html = `<div class='task-group-title'>Overdue (${overdue.length})</div>` + overdue.map(t => `<p>🔴 ${t.title}</p>`).join('');
-            html += `<div class='task-group-title'>Due Today (${today.length})</div>` + today.map(t => `<p>🟡 ${t.title}</p>`).join('');
-            html += `<div class='task-group-title'>Upcoming (${upcoming.length})</div>` + upcoming.map(t => `<p>🟢 ${t.title}</p>`).join('');
-            document.getElementById('tasksContainer').innerHTML = html || 'No active tasks';
-            document.getElementById('myDayCount').innerText = overdue.length + today.length + upcoming.length; document.getElementById('overdueCount').innerText = overdue.length; document.getElementById('briefingText').innerText = `${overdue.length + today.length + upcoming.length} active tasks • ${today.length} due today • ${overdue.length} overdue • ${document.getElementById('calendarCount').innerText} events upcoming`;
+
+function kelownaDay(date) {
+    // B.C. stays on UTC-7 after its final clock change in March 2026.
+    // Apply that rule even on browsers with older time-zone data.
+    if (date >= new Date('2026-03-08T10:00:00Z')) {
+        return new Date(date.getTime() - 7 * 3600000).toISOString().slice(0, 10);
+    }
+    return new Intl.DateTimeFormat('en-CA', { timeZone: briefingZone,
+        year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+function renderBriefing(calendar, tasks, refreshedAt) {
+    const taskSummary = tasks ? tasks.active + ' active tasks · ' + tasks.today
+        + ' due today · ' + tasks.overdue + ' overdue' : 'Tasks unavailable';
+    const calendarSummary = calendar ? calendar.today + (calendar.today === 1 ? ' appointment today' : ' appointments today')
+        + (calendar.partial ? ' (partial calendar coverage)' : '')
+        : 'Outlook Calendar unavailable';
+    document.getElementById('briefingText').textContent = calendarSummary + '\n' + taskSummary;
+    document.getElementById('lastUpdated').textContent = 'Last checked: '
+        + agendaDateLabel(refreshedAt) + ' · ' + kelownaEventTime(refreshedAt, false) + ' Kelowna time'
+        + (calendar && !calendar.partial && tasks ? ' · Calendar and tasks refreshed' : ' · Use Refresh to retry');
+}
+
+async function graphItems(url, headers) {
+    const items = [];
+    while (url) {
+        const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+        if (!response.ok) throw new Error('Microsoft Graph request failed');
+        const page = await response.json();
+        if (!Array.isArray(page.value)) throw new Error('Microsoft Graph returned an invalid response');
+        items.push(...page.value);
+        url = page['@odata.nextLink'];
+    }
+    return items;
+}
+
+function graphEventTime(value) {
+    const time = value?.dateTime;
+    if (!time) return new Date(NaN);
+    return new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(time) ? time : time + 'Z');
+}
+
+function appendRows(container, rows, emptyText) {
+    container.replaceChildren();
+    if (!rows.length) container.textContent = emptyText;
+    for (const row of rows) {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = row;
+        container.append(paragraph);
+    }
+}
+
+async function loadDashboard(account, accessToken) {
+    if (refreshing) return;
+    accountForRefresh = account;
+    refreshing = true;
+    updateBriefingButtons();
+    document.getElementById('briefingText').textContent = 'Refreshing briefing…';
+    try {
+        if (!accessToken) {
+            const token = await pca.acquireTokenSilent({ scopes: graphScopes, account });
+            accessToken = token.accessToken;
         }
+        signInStatus.textContent = account.username;
+        const headers = { Authorization: 'Bearer ' + accessToken };
+        const now = new Date();
+        const [calendar, tasks] = await Promise.allSettled([loadCalendar(headers, now), loadTodo(headers, now)]);
+        if (calendar.status === 'rejected') {
+            document.getElementById('calendarCount').textContent = '—';
+            document.getElementById('calendarContainer').textContent = 'Outlook Calendar unavailable.';
+            document.getElementById('nextEventCard').textContent = 'Outlook Calendar unavailable.';
+        }
+        if (tasks.status === 'rejected') {
+            document.getElementById('myDayCount').textContent = '—';
+            document.getElementById('overdueCount').textContent = '—';
+            document.getElementById('dueTodayCount').textContent = '—';
+            document.getElementById('tasksContainer').textContent = 'Microsoft To Do unavailable.';
+        }
+        renderBriefing(calendar.value, tasks.value, new Date());
+        return { calendar: calendar.value, tasks: tasks.value, now };
+    } catch {
+        signInStatus.textContent = 'Select Sign In to reconnect your Microsoft account.';
+        document.getElementById('briefingText').textContent = 'Microsoft sign-in is needed to refresh.';
+    } finally {
+        refreshing = false;
+        updateBriefingButtons();
+    }
+}
+
+refreshButton.addEventListener('click', () => loadDashboard(accountForRefresh));
+draftButton.addEventListener('click', () => saveBriefingDraft(false));
+connectDrafts.addEventListener('click', () => saveBriefingDraft(true));
+
+function buildBriefingDraft({ calendar, tasks, now }, email) {
+    const day = new Date(kelownaDay(now) + 'T12:00:00Z').toLocaleDateString('en-CA', {
+        timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    });
+    const agenda = calendar
+        ? [...calendar.unavailable.map(label => label + ' unavailable. Agenda is incomplete.'),
+            ...(calendar.todayRows.length ? calendar.todayRows.map(row => '• ' + row)
+                : [calendar.partial ? 'No appointments from available calendars.' : 'No appointments today.'])]
+        : ['Outlook Calendar unavailable.'];
+    const taskLines = tasks
+        ? ['• ' + tasks.active + ' active tasks', '• ' + tasks.today + ' due today', '• ' + tasks.overdue + ' overdue']
+        : ['Microsoft To Do unavailable.'];
+    return {
+        subject: 'Morning briefing — ' + day,
+        body: { contentType: 'Text', content: [day + ' · Kelowna time',
+            'Checked at ' + kelownaEventTime(now, false), '', 'Today’s Outlook agenda', ...agenda,
+            '', 'Microsoft To Do', ...taskLines].join('\n') },
+        toRecipients: [{ emailAddress: { address: email } }]
+    };
+}
+
+async function saveBriefingDraft(interactive = false) {
+    if (!accountForRefresh || refreshing || drafting) return;
+    const account = accountForRefresh;
+    drafting = true;
+    updateBriefingButtons();
+    draftStatus.textContent = 'Connecting to Outlook Drafts…';
+    let posting = false;
+    try {
+        const scopes = ['Mail.ReadWrite'];
+        const mail = interactive
+            ? await pca.acquireTokenPopup({ scopes, account, loginHint: account.username })
+            : await pca.acquireTokenSilent({ scopes, account });
+        connectDrafts.hidden = true;
+        if (mail.account?.homeAccountId !== account.homeAccountId) {
+            draftStatus.textContent = 'Use the same Microsoft account as the dashboard to save a draft.';
+            return;
+        }
+        draftStatus.textContent = 'Refreshing Calendar and To Do…';
+        const snapshot = await loadDashboard(account);
+        if (!snapshot || (!snapshot.calendar && !snapshot.tasks)) {
+            draftStatus.textContent = 'No sources could refresh. Draft was not saved.';
+            return;
+        }
+        const message = buildBriefingDraft(snapshot, account.username);
+        draftStatus.textContent = 'Saving to Outlook Drafts…';
+        posting = true;
+        const response = await fetch('https://graph.microsoft.com/v1.0/me/messages', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + mail.accessToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify(message), signal: AbortSignal.timeout(15000)
+        });
+        draftStatus.textContent = response.status === 201
+            ? 'Saved to Outlook Drafts. Look for “' + message.subject + '”.'
+            : 'Outlook could not confirm the draft. Check Drafts before trying again.';
+    } catch (error) {
+        if (posting) {
+            draftStatus.textContent = 'The save could not be confirmed. Check Outlook Drafts before trying again.';
+        } else {
+            connectDrafts.hidden = false;
+            const code = error?.errorCode;
+            const detail = typeof code === 'string' && /^[a-z0-9_-]+$/i.test(code) ? ' (' + code + ')' : '';
+            draftStatus.textContent = interactive
+                ? 'Outlook connection failed' + detail + '. If Edge blocked the pop-up, allow pop-ups for this preview and retry.'
+                : 'Select Connect Outlook Drafts to open Microsoft’s permission window' + detail + '.';
+        }
+    } finally {
+        drafting = false;
+        updateBriefingButtons();
+    }
+}
+
+
+const dayMs = 86400000;
+
+function kelownaEventTime(date, includeDate) {
+    // Format with the same UTC-7 rule used for the briefing's Kelowna date.
+    return new Date(date.getTime() - 7 * 3600000).toLocaleString('en-CA', {
+        timeZone: 'UTC', hour: 'numeric', minute: '2-digit',
+        ...(includeDate ? { weekday: 'short', month: 'short', day: 'numeric' } : {})
+    });
+}
+
+async function readCalendar(path, label, start, end, headers) {
+    const url = new URL('https://graph.microsoft.com/v1.0/me/' + path);
+    url.searchParams.set('startDateTime', start.toISOString());
+    url.searchParams.set('endDateTime', end.toISOString());
+    url.searchParams.set('$select', 'subject,start,end,isAllDay,isCancelled,iCalUId');
+    const events = (await graphItems(url.href, { ...headers, Prefer: 'outlook.timezone="UTC"' }))
+        .filter(event => !event.isCancelled)
+        .map(event => ({ ...event, labels: [label], startsAt: graphEventTime(event.start),
+            endsAt: graphEventTime(event.end) }));
+    if (events.some(event => !Number.isFinite(+event.startsAt) || !Number.isFinite(+event.endsAt))) {
+        throw new Error('Outlook returned an invalid event time');
+    }
+    return events.filter(event => event.startsAt < end && event.endsAt > start);
+}
+
+async function readSusanCalendar(start, end, headers) {
+    const calendars = await graphItems('https://graph.microsoft.com/v1.0/me/calendars?$select=id,name,isDefaultCalendar', headers);
+    const matches = calendars.filter(calendar => !calendar.isDefaultCalendar
+        && /^susan['’]s?\s+calendar$/i.test(calendar.name?.trim()));
+    if (matches.length !== 1) throw new Error('Susan’s shared calendar could not be identified');
+    return readCalendar('calendars/' + encodeURIComponent(matches[0].id) + '/calendarView',
+        'Susan’s calendar', start, end, headers);
+}
+
+function agendaEventTime(event, includeDate) {
+    return event.isAllDay
+        ? (includeDate ? kelownaDay(event.startsAt) + ' · ' : '') + 'All day'
+        : kelownaEventTime(event.startsAt, includeDate) + ' – ' + kelownaEventTime(event.endsAt, kelownaDay(event.startsAt) !== kelownaDay(event.endsAt));
+}
+
+function agendaEventLine(event, includeDate) {
+    return agendaEventTime(event, includeDate) + ' · ' + (event.subject || 'Untitled event') + ' · ' + event.labels.join(' / ');
+}
+
+function detailRow(className, title, details) {
+    const item = document.createElement('li');
+    item.className = className;
+    const name = document.createElement('strong');
+    name.textContent = title;
+    const meta = document.createElement('span');
+    meta.className = 'row-details';
+    meta.textContent = details;
+    item.append(name, meta);
+    return item;
+}
+
+function calendarAccent(event) {
+    if (event.labels.length > 1) return 'agenda-both';
+    return event.labels[0] === 'Your calendar' ? 'agenda-primary' : 'agenda-shared';
+}
+
+function renderNextEvent(event, now, partial) {
+    const card = document.getElementById('nextEventCard');
+    card.className = event ? calendarAccent(event) : '';
+    card.textContent = event ? '' : partial
+        ? 'No upcoming start time from available calendars.' : 'No upcoming start time.';
+    if (!event) return;
+    const time = document.createElement('time');
+    time.className = 'next-event-time';
+    time.dateTime = event.startsAt.toISOString();
+    time.textContent = kelownaEventTime(event.startsAt, kelownaDay(event.startsAt) !== kelownaDay(now));
+    const title = document.createElement('p');
+    title.className = 'next-event-title';
+    title.textContent = event.subject || 'Untitled event';
+    const source = document.createElement('span');
+    source.className = 'row-details';
+    source.textContent = event.labels.join(' / ') + (partial ? ' · Partial calendar coverage' : '');
+    card.append(time, title, source);
+}
+
+function agendaDateLabel(date) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+        .format(new Date(kelownaDay(date) + 'T12:00:00Z'));
+}
+
+async function loadCalendar(headers, now) {
+    const start = new Date(kelownaDay(now) + 'T00:00:00-07:00');
+    const tomorrow = new Date(+start + dayMs);
+    const afterTomorrow = new Date(+tomorrow + dayMs);
+    const end = new Date(+start + 7 * dayMs);
+    const [primary, shared] = await Promise.allSettled([
+        readCalendar('calendarView', 'Your calendar', start, end, headers),
+        readSusanCalendar(start, end, headers)
+    ]);
+    if (primary.status === 'rejected' && shared.status === 'rejected') throw primary.reason;
+
+    const events = [];
+    const byOccurrence = new Map();
+    for (const event of [...(primary.value ?? []), ...(shared.value ?? [])]) {
+        const key = event.iCalUId && JSON.stringify([event.iCalUId, +event.startsAt]);
+        const existing = key && byOccurrence.get(key);
+        if (existing && !existing.labels.includes(event.labels[0])) {
+            existing.labels.push(event.labels[0]);
+        } else if (!existing) {
+            events.push(event);
+            if (key) byOccurrence.set(key, event);
+        }
+    }
+    events.sort((a, b) => a.startsAt - b.startsAt);
+    const today = events.filter(event => event.startsAt < tomorrow);
+    const tomorrowEvents = events.filter(event => event.startsAt >= tomorrow && event.startsAt < afterTomorrow);
+    const later = events.filter(event => event.startsAt >= afterTomorrow);
+    const unavailable = [
+        primary.status === 'rejected' ? 'Your calendar' : '',
+        shared.status === 'rejected' ? 'Susan’s calendar' : ''
+    ].filter(Boolean);
+    const partial = unavailable.length > 0;
+
+    const container = document.getElementById('calendarContainer');
+    container.replaceChildren();
+    appendRows(container, ['Kelowna time · Seven days including today',
+        ...unavailable.map(label => label + ' unavailable. The agenda is incomplete.')], '');
+    for (const [heading, entries, includeDate, sectionDate] of [
+        ['Today', today, false, start], ['Tomorrow', tomorrowEvents, false, tomorrow], ['This Week', later, true, afterTomorrow]
+    ]) {
+        let section = container;
+        if (heading === 'This Week') {
+            section = document.createElement('details');
+            section.className = 'agenda-week';
+            section.open = weekExpanded;
+            section.addEventListener('toggle', () => { weekExpanded = section.open; });
+            const summary = document.createElement('summary');
+            summary.textContent = heading + (partial ? '' : ' (' + entries.length + ')');
+            const dates = document.createElement('span');
+            dates.className = 'agenda-date';
+            dates.textContent = agendaDateLabel(sectionDate) + ' – ' + agendaDateLabel(new Date(+end - dayMs));
+            summary.append(dates);
+            section.append(summary);
+            container.append(section);
+        } else {
+            const title = document.createElement('h3');
+            title.textContent = heading;
+            const date = document.createElement('span');
+            date.className = 'agenda-date';
+            date.textContent = agendaDateLabel(sectionDate);
+            title.append(date);
+            section.append(title);
+        }
+        if (!entries.length) {
+            const empty = document.createElement('p');
+            empty.textContent = partial ? 'No events from available calendars.' : 'No events.';
+            section.append(empty);
+            continue;
+        }
+        const rows = document.createElement('ul');
+        rows.className = 'agenda-list';
+        for (const event of entries) {
+            rows.append(detailRow('agenda-item ' + calendarAccent(event), event.subject || 'Untitled event',
+                agendaEventTime(event, includeDate) + ' · ' + event.labels.join(' / ')));
+        }
+        section.append(rows);
+    }
+
+    const upcoming = events.filter(event => event.endsAt > now);
+    document.getElementById('calendarCount').textContent = upcoming.length + (partial ? ' (partial)' : '');
+    const next = upcoming.find(event => event.startsAt >= now && !event.isAllDay);
+    renderNextEvent(next, now, partial);
+    return { today: today.length, partial, unavailable, todayRows: today.map(event => agendaEventLine(event, false)) };
+}
+
+function taskReminderLabel(task) {
+    if (!task.isReminderOn) return '';
+    const { dateTime, timeZone } = task.reminderDateTime ?? {};
+    if (!dateTime) return 'Reminder on · Time unavailable';
+    const hasOffset = /(?:Z|[+-]\d{2}:\d{2})$/i.test(dateTime);
+    const date = graphEventTime({ dateTime });
+    if (!Number.isFinite(+date)) return 'Reminder on · Time unavailable';
+    if (hasOffset || /^(UTC|Etc\/UTC)$/i.test(timeZone || '')) {
+        return 'Reminder: ' + agendaDateLabel(date) + ' · ' + kelownaEventTime(date, false) + ' Kelowna time';
+    }
+    if (!timeZone) return 'Reminder on · Time zone unavailable';
+    const local = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'UTC', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    }).format(date);
+    return 'Reminder: ' + local + ' (' + timeZone + ')';
+}
+
+async function loadTodo(headers, now) {
+    const today = kelownaDay(now);
+    const lists = await graphItems('https://graph.microsoft.com/v1.0/me/todo/lists', headers);
+    const groups = { Overdue: [], 'Due Today': [], Upcoming: [], 'No Due Date': [] };
+    for (const list of lists) {
+        const tasks = await graphItems('https://graph.microsoft.com/v1.0/me/todo/lists/'
+            + encodeURIComponent(list.id) + '/tasks', headers);
+        for (const task of tasks) {
+            if (task.status === 'completed') continue;
+            const due = task.dueDateTime?.dateTime?.slice(0, 10);
+            const group = !due ? 'No Due Date' : due > today ? 'Upcoming' : due === today ? 'Due Today' : 'Overdue';
+            groups[group].push({ title: task.title, due, important: task.importance === 'high', list: list.displayName, reminder: taskReminderLabel(task) });
+        }
+    }
+    const container = document.getElementById('tasksContainer');
+    container.replaceChildren();
+    let active = 0;
+    for (const [name, tasks] of Object.entries(groups)) {
+        tasks.sort((a, b) => Number(b.important) - Number(a.important)
+            || (a.due || '').localeCompare(b.due || '')
+            || (a.title || '').localeCompare(b.title || ''));
+        const collapsible = (name === 'Upcoming' || name === 'No Due Date') && tasks.length > 0;
+        const heading = document.createElement(collapsible ? 'summary' : 'h3');
+        heading.className = 'task-group-title';
+        const reminders = tasks.filter(task => task.reminder).length;
+        heading.textContent = name + ' (' + tasks.length + ')'
+            + (reminders ? ' · ' + reminders + (reminders === 1 ? ' reminder' : ' reminders') : '');
+        let section = container;
+        if (collapsible) {
+            section = document.createElement('details');
+            section.className = 'later-tasks';
+            section.open = expandedTaskGroups.has(name);
+            section.addEventListener('toggle', () => {
+                if (section.open) expandedTaskGroups.add(name);
+                else expandedTaskGroups.delete(name);
+            });
+            container.append(section);
+        }
+        section.append(heading);
+        if (tasks.length) {
+            const rows = document.createElement('ul');
+            rows.className = 'task-list';
+            for (const task of tasks) {
+                const due = task.due ? new Date(task.due + 'T12:00:00Z').toLocaleDateString('en-CA', {
+                    timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric'
+                }) : '';
+                const details = [task.important ? 'Important' : '', due ? 'Due ' + due : 'No due date', task.list, task.reminder].filter(Boolean);
+                rows.append(detailRow(task.important ? 'task-item task-important' : 'task-item',
+                    task.title || 'Untitled task', details.join(' · ') || 'No due date'));
+            }
+            section.append(rows);
+        }
+        active += tasks.length;
+    }
+    const overdue = groups.Overdue.length;
+    document.getElementById('myDayCount').textContent = active;
+    document.getElementById('overdueCount').textContent = overdue;
+    const dueToday = groups['Due Today'].length;
+    document.getElementById('dueTodayCount').textContent = dueToday;
+    return { active, overdue, today: dueToday };
+}
+
         const defaults = { projectsUrl: 'https://mask-projecttrack.pages.dev/', ideasUrl: 'https://daily-planner-launchpad.navybetta5.chatgpt.site/?view=ideas', trainingUrl: 'https://winter-fit.mgchalmers.chatgpt.site/', lifeUrl: 'https://job-jar.navybetta5.chatgpt.site/' };
         function loadSettings() { for (let k in defaults) { document.getElementById(k).value = localStorage.getItem(k) || defaults[k]; } }
         function saveSettings() { for (let k in defaults) { localStorage.setItem(k, document.getElementById(k).value); } alert('Saved'); }
@@ -522,6 +1014,65 @@ Starts in ${days}d ${hours}h ${minutes}m
             reload();
         })();
         // Read-only Remy cloud snapshot. Keep unavailable data distinct from zero.
+        function remyWeek(walks, now) {
+            const today = new Date(kelownaDay(now) + 'T12:00:00-07:00');
+            const days = new Map();
+            for (let offset = 6; offset >= 0; offset--) {
+                const date = new Date(+today - offset * dayMs);
+                days.set(kelownaDay(date), { date, count: 0, km: 0 });
+            }
+            for (const walk of walks) {
+                if (!Number.isSafeInteger(walk.start)) continue;
+                const start = new Date(walk.start);
+                if (!Number.isFinite(+start) || start > now) continue;
+                const day = days.get(kelownaDay(start));
+                if (!day) continue;
+                day.count++;
+                day.km += walk.km;
+            }
+            return [...days.values()];
+        }
+
+        function renderRemyWeek(snapshot, now) {
+            const chart = document.getElementById('remyChartDays');
+            const status = document.getElementById('remyChartStatus');
+            chart.replaceChildren();
+            if (!snapshot) {
+                status.textContent = 'Walk history unavailable. Use Refresh Remy totals to retry.';
+                return;
+            }
+            const days = remyWeek(snapshot.walks, now);
+            const published = Date.parse(snapshot.generatedAt);
+            const count = days.reduce((sum, day) => sum + day.count, 0);
+            const max = Math.max(...days.map(day => day.km));
+            const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+            status.textContent = count + (count === 1 ? ' walk' : ' walks')
+                + ' in snapshot · Daily distance in km · Kelowna time · Published '
+                + agendaDateLabel(new Date(published));
+            for (const day of days) {
+                const item = document.createElement('li');
+                const value = document.createElement('span');
+                const dayStart = new Date(kelownaDay(day.date) + 'T00:00:00-07:00');
+                const covered = published >= dayStart;
+                value.textContent = covered || day.count ? number.format(day.km) : '—';
+                const track = document.createElement('div');
+                track.className = 'remy-bar-track';
+                track.setAttribute('aria-hidden', 'true');
+                const bar = document.createElement('div');
+                bar.className = 'remy-bar';
+                bar.style.height = (max ? day.km / max * 100 : 0) + '%';
+                track.append(bar);
+                const label = document.createElement('time');
+                label.dateTime = kelownaDay(day.date);
+                label.textContent = agendaDateLabel(day.date);
+                item.append(value, track, label);
+                chart.append(item);
+            }
+            if (published < now.getTime() - dayMs) {
+                status.textContent += ' · A dash means the day is newer than the snapshot.';
+            }
+        }
+
         async function refreshActivityTotals() {
             const button = document.getElementById('refreshActivities');
             const status = document.getElementById('remyActivityStatus');
@@ -543,10 +1094,12 @@ Starts in ${days}d ${hours}h ${minutes}m
                 document.getElementById('remyTotalCount').textContent = snapshot.walks.length.toLocaleString();
                 document.getElementById('remyTotalKm').textContent = total.toLocaleString(undefined, {maximumFractionDigits: 2});
                 status.textContent = 'Remy Walk · Snapshot ' + new Date(snapshot.generatedAt).toLocaleString();
+                renderRemyWeek(snapshot, new Date());
             } catch {
                 document.getElementById('remyTotalCount').textContent = '—';
                 document.getElementById('remyTotalKm').textContent = '—';
                 status.textContent = 'Remy Walk · Unavailable. Open Remy Walk and publish, then retry.';
+                renderRemyWeek(null);
             } finally { button.disabled = false; }
         }
         document.getElementById('refreshActivities').addEventListener('click', refreshActivityTotals);
@@ -616,7 +1169,8 @@ Starts in ${days}d ${hours}h ${minutes}m
                 lastReceipt=receipt;receipt.popup.postMessage({channel,type:'received',requestId:receipt.requestId},origin);
             });
         })();
-        startup(); updateCountdown();
+        document.addEventListener('DOMContentLoaded', startup);
+        updateCountdown();
     </script>
 </body>
 

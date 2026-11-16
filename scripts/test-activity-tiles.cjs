@@ -10,7 +10,7 @@ assert.equal(tiles.filter(t => t.includes('Total km')).length, 6);
 assert(!tiles[6].includes('Total km'));
 const code = html.slice(html.indexOf('async function refreshActivityTotals()'), html.indexOf("document.getElementById('refreshActivities').addEventListener"));
 const elements = {};
-const context = vm.createContext({document: {getElementById: id => elements[id] ||= {}}, AbortSignal, fetch: null});
+const context = vm.createContext({document: {getElementById: id => elements[id] ||= {}}, AbortSignal, fetch: null, renderRemyWeek() {}});
 vm.runInContext(code, context);
 async function run(snapshot, ok = true) {
   context.fetch = async () => ({ok, json: async () => snapshot});
