@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.0</title>
+    <title>Murray's Big Plan v1.11.1</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -256,7 +256,9 @@
         .later-tasks summary { margin: 0; padding: 12px 0; color: #bae6fd; cursor: pointer; font-weight: bold; }
 
         .briefing-card { border: 1px solid #38516b; background: linear-gradient(130deg, #223951, #1e293b 65%); }
+        #outlookBriefStatus:empty { display: none; }
         .briefing-card #briefingText { margin: 8px 0 14px; }
+        #outlookBriefText { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
         .briefing-card #refreshBriefing:enabled { background: #bae6fd; border-color: #bae6fd; color: #0f172a; }
         .activity-heading > div { display: flex; flex-wrap: wrap; gap: 6px; }
         .activity-heading button { min-height: 44px; }
@@ -298,9 +300,15 @@
         <p id="briefingText" role="status">Sign in to load your morning briefing.</p>
         <div class="dashboard-actions">
         <button id="refreshBriefing" type="button" disabled>Refresh briefing</button>
+        <button id="loadOutlookBrief" type="button" disabled>Load Outlook brief</button>
         <button id="draftBriefing" type="button" disabled>Save Outlook draft</button>
         <button id="connectDrafts" type="button" hidden>Connect Outlook Drafts</button>
         </div>
+        <p id="outlookBriefStatus" class="subtitle" role="status"></p>
+        <section id="outlookBrief" aria-labelledby="outlookBriefHeading" hidden>
+            <h3 id="outlookBriefHeading">Outlook test brief · November 17</h3>
+            <p id="outlookBriefText"></p>
+        </section>
         <p id="draftStatus" class="subtitle" role="status"></p>
         <div id="lastUpdated" class="subtitle"></div>
     </div>
@@ -385,7 +393,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.0 • Planning overview • Activity Totals
+        v1.11.1 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -461,13 +469,19 @@ const expandedTaskGroups = new Set();
 const briefingZone = 'America/Vancouver';
 const refreshButton = document.getElementById('refreshBriefing');
 const draftButton = document.getElementById('draftBriefing');
+const outlookBriefButton = document.getElementById('loadOutlookBrief');
+const outlookBriefStatus = document.getElementById('outlookBriefStatus');
+const outlookBrief = document.getElementById('outlookBrief');
+const outlookBriefText = document.getElementById('outlookBriefText');
+let loadingOutlookBrief = false;
 const draftStatus = document.getElementById('draftStatus');
 const connectDrafts = document.getElementById('connectDrafts');
 let drafting = false;
 
 function updateBriefingButtons() {
-    refreshButton.disabled = !accountForRefresh || refreshing || drafting;
+    refreshButton.disabled = !accountForRefresh || refreshing || drafting || loadingOutlookBrief;
     draftButton.disabled = refreshButton.disabled;
+    outlookBriefButton.disabled = refreshButton.disabled;
     connectDrafts.disabled = refreshButton.disabled;
 }
 
@@ -524,6 +538,11 @@ function appendRows(container, rows, emptyText) {
 
 async function loadDashboard(account, accessToken) {
     if (refreshing) return;
+    if (accountForRefresh?.homeAccountId !== account.homeAccountId) {
+        outlookBrief.hidden = true;
+        outlookBriefText.textContent = '';
+        outlookBriefStatus.textContent = '';
+    }
     accountForRefresh = account;
     refreshing = true;
     updateBriefingButtons();
@@ -562,6 +581,69 @@ async function loadDashboard(account, accessToken) {
 refreshButton.addEventListener('click', () => loadDashboard(accountForRefresh));
 draftButton.addEventListener('click', () => saveBriefingDraft(false));
 connectDrafts.addEventListener('click', () => saveBriefingDraft(true));
+
+outlookBriefButton.addEventListener('click', loadOutlookTestBrief);
+
+async function loadOutlookTestBrief() {
+    if (outlookBriefButton.disabled) return;
+    const account = accountForRefresh;
+    loadingOutlookBrief = true;
+    updateBriefingButtons();
+    outlookBrief.hidden = true;
+    outlookBriefText.textContent = '';
+    outlookBriefStatus.textContent = 'Connecting to Outlook…';
+
+    try {
+        const mail = await pca.acquireTokenPopup({
+            scopes: ['Mail.Read'], account, loginHint: account.username
+        });
+        if (mail.account?.homeAccountId !== account.homeAccountId) {
+            outlookBriefStatus.textContent = 'Choose the same Microsoft account as the dashboard.';
+            return;
+        }
+
+        outlookBriefStatus.textContent = 'Finding the November 17 brief in your Inbox…';
+        const subject = 'Planning brief test — November 17';
+        const url = new URL('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages');
+        url.searchParams.set('$filter', "subject eq '" + subject + "'");
+        url.searchParams.set('$select', 'subject,from,receivedDateTime,body');
+        url.searchParams.set('$top', '25');
+        const response = await fetch(url, {
+            headers: {
+                Authorization: 'Bearer ' + mail.accessToken,
+                Prefer: 'outlook.body-content-type="text"'
+            },
+            cache: 'no-store',
+            signal: AbortSignal.timeout(15000)
+        });
+        if (!response.ok) throw new Error('Outlook Inbox lookup failed');
+        const page = await response.json();
+        if (!Array.isArray(page.value)) throw new Error('Invalid Outlook response');
+        const sender = account.username.toLowerCase();
+        const matches = page.value.filter(message => message.subject === subject
+            && message.from?.emailAddress?.address?.toLowerCase() === sender
+            && kelownaDay(new Date(message.receivedDateTime)) === '2026-11-17');
+        if (matches.length !== 1 || page['@odata.nextLink']) {
+            outlookBriefStatus.textContent = matches.length || page['@odata.nextLink']
+                ? 'Outlook returned more than one possible test brief. Open the email in Outlook.'
+                : 'The November 17 test brief was not found in your Outlook Inbox.';
+            return;
+        }
+
+        const body = matches[0].body;
+        if (body?.contentType?.toLowerCase() !== 'text' || !body.content?.trim()) {
+            throw new Error('Outlook did not return the brief as text');
+        }
+        outlookBriefText.textContent = body.content.trimEnd();
+        outlookBrief.hidden = false;
+        outlookBriefStatus.textContent = 'Loaded from your Outlook Inbox.';
+    } catch {
+        outlookBriefStatus.textContent = 'Could not load the Outlook brief. Allow the Microsoft sign-in window and try again.';
+    } finally {
+        loadingOutlookBrief = false;
+        updateBriefingButtons();
+    }
+}
 
 function buildBriefingDraft({ calendar, tasks, now }, email) {
     const day = new Date(kelownaDay(now) + 'T12:00:00Z').toLocaleDateString('en-CA', {
