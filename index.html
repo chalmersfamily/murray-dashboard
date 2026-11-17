@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.3</title>
+    <title>Murray's Big Plan v1.11.4</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -397,7 +397,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.3 • Planning overview • Activity Totals
+        v1.11.4 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -1039,32 +1039,50 @@ async function loadTodo(headers, now) {
             countdownPublish.hidden = !countdownRemote || Boolean(countdownRemote.value);
         }
 
+        class CountdownConnectionError extends Error {}
+
         async function countdownToken(account, interactive) {
             const request = { scopes: countdownScope, account, loginHint: account.username };
-            const token = interactive ? await pca.acquireTokenPopup(request) : await pca.acquireTokenSilent(request);
-            if (token.account?.homeAccountId !== account.homeAccountId) throw new Error('Different Microsoft account');
+            let token;
+            try {
+                token = interactive ? await pca.acquireTokenPopup(request) : await pca.acquireTokenSilent(request);
+            } catch (error) {
+                const code = typeof error?.errorCode === 'string' && /^[a-z0-9_]{1,60}$/i.test(error.errorCode)
+                    ? error.errorCode : '';
+                const detail = /\bAADSTS\d{4,9}\b/.exec(error?.message || '')?.[0];
+                const suffix = [code, detail].filter(Boolean).join(', ');
+                throw new CountdownConnectionError('Microsoft sign-in' + (suffix ? ' (' + suffix + ')' : ' failed'));
+            }
+            if (token.account?.homeAccountId !== account.homeAccountId) throw new CountdownConnectionError('Microsoft returned a different account');
             return { Authorization: 'Bearer ' + token.accessToken };
+        }
+
+        async function countdownGraphError(step, response) {
+            const result = await response.json().catch(() => null);
+            const code = result?.error?.code;
+            const detail = typeof code === 'string' && /^[a-z0-9_]{1,60}$/i.test(code) ? ', ' + code : '';
+            return new CountdownConnectionError(step + ' (HTTP ' + response.status + detail + ')');
         }
 
         async function readCountdown(headers) {
             const options = { headers, cache: 'no-store', signal: AbortSignal.timeout(12000) };
             const root = await fetch(countdownDrive + 'special/approot', options);
-            if (!root.ok) throw new Error('Countdown folder unavailable');
+            if (!root.ok) throw await countdownGraphError('OneDrive app folder', root);
             const { id } = await root.json();
-            if (!id) throw new Error('Countdown folder ID missing');
+            if (!id) throw new CountdownConnectionError('Countdown folder ID missing');
             const parent = countdownDrive + 'items/' + encodeURIComponent(id);
             const path = parent + ':/' + countdownFilename;
             const item = await fetch(path + '?$select=id,eTag,@microsoft.graph.downloadUrl', options);
             if (item.status === 404) return { path };
-            if (!item.ok) throw new Error('Countdown settings unavailable');
+            if (!item.ok) throw await countdownGraphError('OneDrive countdown file', item);
             const metadata = await item.json();
             const url = new URL(metadata['@microsoft.graph.downloadUrl']);
-            if (url.protocol !== 'https:' || !metadata.id || !metadata.eTag) throw new Error('Invalid countdown metadata');
+            if (url.protocol !== 'https:' || !metadata.id || !metadata.eTag) throw new CountdownConnectionError('Invalid countdown metadata');
             const download = await fetch(url, { credentials: 'omit', cache: 'no-store',
                 referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(12000) });
-            if (!download.ok) throw new Error('Countdown download failed');
+            if (!download.ok) throw new CountdownConnectionError('Countdown download failed');
             const value = await download.json();
-            if (!validCountdown(value)) throw new Error('Invalid saved countdown');
+            if (!validCountdown(value)) throw new CountdownConnectionError('Invalid saved countdown');
             return { path, id: metadata.id, eTag: metadata.eTag, value };
         }
 
@@ -1083,11 +1101,13 @@ async function loadTodo(headers, now) {
                 countdownStatus.textContent = remote.value
                     ? 'Synced with OneDrive.'
                     : 'To start syncing, select Use this countdown on the device with the correct date.';
-            } catch {
-                countdownStatus.textContent = countdownRemote
-                    ? 'Could not refresh OneDrive. Showing the last loaded countdown.'
-                    : interactive ? 'Could not connect countdown sync. Try Sync countdown again.'
-                        : 'Saved in this browser. Select Sync countdown to share it across devices.';
+            } catch (error) {
+                const detail = error instanceof CountdownConnectionError ? error.message : 'Network or browser error';
+                if (interactive || countdownRemote || !detail.startsWith('Microsoft sign-in')) {
+                    countdownStatus.textContent = 'Countdown sync stopped: ' + detail + '.';
+                } else {
+                    countdownStatus.textContent = 'Saved in this browser. Select Sync countdown to share it across devices.';
+                }
             } finally {
                 countdownBusy = false;
                 updateCountdown();
