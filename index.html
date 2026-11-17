@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.2</title>
+    <title>Murray's Big Plan v1.11.3</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -342,7 +342,11 @@
         <div class="top-card">
             <h3>Countdown</h3>
             <div id="countdownName">Belgium Trip</div>
-            <div class="big" id="countdownDays">0</div><button onclick="editCountdown()">Edit</button>
+            <div class="big" id="countdownDays">0</div>
+            <button id="editCountdown" type="button">Edit</button>
+            <button id="connectCountdown" type="button" hidden>Sync countdown</button>
+            <button id="publishCountdown" type="button" hidden>Use this countdown</button>
+            <p id="countdownStatus" class="subtitle" role="status"></p>
         </div>
     </div>
         <div class="tasks-panel card" id="dashboard-tasks">
@@ -393,7 +397,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.2 • Planning overview • Activity Totals
+        v1.11.3 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -546,6 +550,11 @@ async function loadDashboard(account, accessToken) {
         outlookBriefAccountId = undefined;
     }
     accountForRefresh = account;
+    if (countdownAccountId !== account.homeAccountId) {
+        countdownRemote = undefined;
+        countdownStatus.textContent = '';
+        updateCountdown();
+    }
     refreshing = true;
     updateBriefingButtons();
     document.getElementById('briefingText').textContent = 'Refreshing briefing…';
@@ -577,6 +586,9 @@ async function loadDashboard(account, accessToken) {
     } finally {
         refreshing = false;
         updateBriefingButtons();
+        if (accessToken && countdownAccountId !== account.homeAccountId) {
+            void refreshCountdown(false);
+        }
         if (accessToken && outlookBriefAccountId !== account.homeAccountId) {
             void loadOutlookTestBrief(false);
         }
@@ -987,8 +999,178 @@ async function loadTodo(headers, now) {
         function openLink(k) { window.open(localStorage.getItem(k) || defaults[k], '_blank'); }
         function openSettings() { loadSettings(); settingsModal.style.display = 'block'; }
         function closeSettings() { settingsModal.style.display = 'none'; }
-        function editCountdown() { let n = prompt('Countdown Name', localStorage.getItem('countdownName') || 'Belgium Trip'); let d = prompt('Target Date (YYYY-MM-DD)', localStorage.getItem('countdownTarget') || '2026-12-01'); if (n) localStorage.setItem('countdownName', n); if (d) localStorage.setItem('countdownTarget', d); updateCountdown(); }
-        function updateCountdown() { const n = localStorage.getItem('countdownName') || 'Belgium Trip'; const d = localStorage.getItem('countdownTarget') || '2026-12-01'; document.getElementById('countdownName').innerText = n; const days = Math.ceil((new Date(d) - new Date()) / 86400000); document.getElementById('countdownDays').innerText = days; }
+        const countdownScope = ['Files.ReadWrite.AppFolder'];
+        const countdownFilename = 'countdown.json';
+        const countdownDrive = 'https://graph.microsoft.com/v1.0/me/drive/';
+        const countdownStatus = document.getElementById('countdownStatus');
+        const countdownEdit = document.getElementById('editCountdown');
+        const countdownConnect = document.getElementById('connectCountdown');
+        const countdownPublish = document.getElementById('publishCountdown');
+        let countdownAccountId;
+        let countdownRemote;
+        let countdownBusy = false;
+
+        function validCountdown(value) {
+            if (typeof value?.name !== 'string' || !value.name.trim() || value.name.length > 120
+                || typeof value.target !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.target)) return false;
+            const date = new Date(value.target);
+            return Number.isFinite(+date) && date.toISOString().slice(0, 10) === value.target;
+        }
+
+        function localCountdown() {
+            const defaults = { name: 'Belgium Trip', target: '2026-12-01' };
+            try {
+                const saved = { name: localStorage.getItem('countdownName') || defaults.name,
+                    target: localStorage.getItem('countdownTarget') || defaults.target };
+                if (validCountdown(saved)) return saved;
+            } catch {}
+            return defaults;
+        }
+
+        function updateCountdown() {
+            const { name, target } = countdownRemote?.value ?? localCountdown();
+            document.getElementById('countdownName').textContent = name;
+            const days = (Date.parse(target) - Date.parse(kelownaDay(new Date()))) / dayMs;
+            document.getElementById('countdownDays').textContent = days;
+            countdownEdit.disabled = countdownBusy;
+            countdownConnect.disabled = countdownBusy;
+            countdownPublish.disabled = countdownBusy;
+            countdownConnect.hidden = !accountForRefresh || Boolean(countdownRemote);
+            countdownPublish.hidden = !countdownRemote || Boolean(countdownRemote.value);
+        }
+
+        async function countdownToken(account, interactive) {
+            const request = { scopes: countdownScope, account, loginHint: account.username };
+            const token = interactive ? await pca.acquireTokenPopup(request) : await pca.acquireTokenSilent(request);
+            if (token.account?.homeAccountId !== account.homeAccountId) throw new Error('Different Microsoft account');
+            return { Authorization: 'Bearer ' + token.accessToken };
+        }
+
+        async function readCountdown(headers) {
+            const options = { headers, cache: 'no-store', signal: AbortSignal.timeout(12000) };
+            const root = await fetch(countdownDrive + 'special/approot', options);
+            if (!root.ok) throw new Error('Countdown folder unavailable');
+            const { id } = await root.json();
+            if (!id) throw new Error('Countdown folder ID missing');
+            const parent = countdownDrive + 'items/' + encodeURIComponent(id);
+            const path = parent + ':/' + countdownFilename;
+            const item = await fetch(path + '?$select=id,eTag,@microsoft.graph.downloadUrl', options);
+            if (item.status === 404) return { path };
+            if (!item.ok) throw new Error('Countdown settings unavailable');
+            const metadata = await item.json();
+            const url = new URL(metadata['@microsoft.graph.downloadUrl']);
+            if (url.protocol !== 'https:' || !metadata.id || !metadata.eTag) throw new Error('Invalid countdown metadata');
+            const download = await fetch(url, { credentials: 'omit', cache: 'no-store',
+                referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(12000) });
+            if (!download.ok) throw new Error('Countdown download failed');
+            const value = await download.json();
+            if (!validCountdown(value)) throw new Error('Invalid saved countdown');
+            return { path, id: metadata.id, eTag: metadata.eTag, value };
+        }
+
+        async function refreshCountdown(interactive) {
+            const account = accountForRefresh;
+            if (!account || countdownBusy) return;
+            if (countdownAccountId !== account.homeAccountId) countdownRemote = undefined;
+            countdownAccountId = account.homeAccountId;
+            countdownBusy = true;
+            updateCountdown();
+            try {
+                const headers = await countdownToken(account, interactive);
+                const remote = await readCountdown(headers);
+                if (accountForRefresh?.homeAccountId !== account.homeAccountId) return;
+                countdownRemote = remote;
+                countdownStatus.textContent = remote.value
+                    ? 'Synced with OneDrive.'
+                    : 'To start syncing, select Use this countdown on the device with the correct date.';
+            } catch {
+                countdownStatus.textContent = countdownRemote
+                    ? 'Could not refresh OneDrive. Showing the last loaded countdown.'
+                    : interactive ? 'Could not connect countdown sync. Try Sync countdown again.'
+                        : 'Saved in this browser. Select Sync countdown to share it across devices.';
+            } finally {
+                countdownBusy = false;
+                updateCountdown();
+            }
+        }
+
+        async function saveSharedCountdown(value) {
+            const account = accountForRefresh;
+            const previous = countdownRemote;
+            countdownBusy = true;
+            updateCountdown();
+            try {
+                const token = await countdownToken(account, false);
+                const path = previous.id ? countdownDrive + 'items/' + encodeURIComponent(previous.id)
+                    : previous.path + ':';
+                const headers = { ...token, 'Content-Type': 'application/json' };
+                if (previous.eTag) headers['If-Match'] = previous.eTag;
+                const session = await fetch(path + '/createUploadSession', {
+                    method: 'POST', headers, signal: AbortSignal.timeout(12000),
+                    body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': previous.id ? 'replace' : 'fail' } })
+                });
+                if ([409, 412].includes(session.status)) throw new Error('Countdown conflict');
+                if (!session.ok) throw new Error('Countdown sync session failed');
+                const url = new URL((await session.json()).uploadUrl);
+                if (url.protocol !== 'https:') throw new Error('Invalid countdown upload URL');
+                const bytes = new TextEncoder().encode(JSON.stringify(value));
+                const upload = await fetch(url, { method: 'PUT', credentials: 'omit', referrerPolicy: 'no-referrer',
+                    headers: { 'Content-Range': 'bytes 0-' + (bytes.length - 1) + '/' + bytes.length },
+                    body: bytes, signal: AbortSignal.timeout(12000) });
+                if ([409, 412].includes(upload.status)) throw new Error('Countdown conflict');
+                if (![200, 201].includes(upload.status)) throw new Error('Countdown upload incomplete');
+                const saved = await readCountdown(token);
+                if (accountForRefresh?.homeAccountId !== account.homeAccountId) return;
+                countdownRemote = saved;
+                countdownStatus.textContent = saved.value?.name === value.name && saved.value?.target === value.target
+                    ? 'Saved to OneDrive.' : 'OneDrive changed. Showing the current shared countdown.';
+            } catch (error) {
+                if (error.message === 'Countdown conflict') {
+                    countdownStatus.textContent = 'Another device changed the countdown. Refresh before editing.';
+                    countdownRemote = undefined;
+                } else {
+                    countdownStatus.textContent = 'Could not confirm the OneDrive save. Refresh before editing again.';
+                    countdownRemote = undefined;
+                }
+            } finally {
+                countdownBusy = false;
+                updateCountdown();
+            }
+        }
+
+        function editCountdown() {
+            const current = countdownRemote?.value ?? localCountdown();
+            const name = prompt('Countdown name', current.name)?.trim();
+            if (name == null) return;
+            const target = prompt('Target date (YYYY-MM-DD)', current.target)?.trim();
+            if (target == null) return;
+            const value = { name, target };
+            if (!validCountdown(value)) {
+                countdownStatus.textContent = 'Enter a name and a valid date in YYYY-MM-DD format.';
+                return;
+            }
+            if (countdownRemote?.value) {
+                void saveSharedCountdown(value);
+                return;
+            }
+            try {
+                localStorage.setItem('countdownName', name);
+                localStorage.setItem('countdownTarget', target);
+                countdownStatus.textContent = countdownRemote
+                    ? 'Saved on this device. Select Use this countdown to sync it.'
+                    : 'Saved in this browser.';
+            } catch {
+                countdownStatus.textContent = 'This browser could not save the countdown.';
+            }
+            updateCountdown();
+        }
+
+        countdownEdit.addEventListener('click', editCountdown);
+        countdownConnect.addEventListener('click', () => refreshCountdown(true));
+        countdownPublish.addEventListener('click', () => saveSharedCountdown(localCountdown()));
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && countdownRemote) void refreshCountdown(false);
+        });
         // Separate from Launchpad / Idea Garden storage.
         (() => {
             const key = 'murray-dashboard-ideas-v1';
