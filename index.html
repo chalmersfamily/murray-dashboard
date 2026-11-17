@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.5</title>
+    <title>Murray's Big Plan v1.11.6</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -373,6 +373,7 @@
             <ol id="remyChartDays" aria-label="Daily kilometres in Kelowna time"></ol>
         </section>
         <p class="subtitle activity-note">Totals come from the named apps. A dash means a total is not available yet.</p>
+        <p id="activitySyncStatus" class="subtitle activity-note" role="status"></p>
         <p id="fitnessConnectionStatus" class="subtitle activity-note" role="status">Connect WinterFit, sign in, then share your saved activity totals.</p>
         <p id="paddleConnectionStatus" class="subtitle activity-note" role="status">Connect PaddleTrack to share combined OC1 + OC6 totals from its latest imported snapshot.</p>
     </section>
@@ -397,7 +398,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.5 • Planning overview • Activity Totals
+        v1.11.6 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -588,6 +589,9 @@ async function loadDashboard(account, accessToken) {
         updateBriefingButtons();
         if (accessToken && countdownAccountId !== account.homeAccountId) {
             void refreshCountdown(false);
+        }
+        if (accessToken && activitySyncAccount !== account.homeAccountId) {
+            void syncActivityTotals();
         }
         if (accessToken && outlookBriefAccountId !== account.homeAccountId) {
             void loadOutlookTestBrief(false);
@@ -1088,6 +1092,10 @@ async function loadTodo(headers, now) {
         }
 
         async function readCountdown(headers) {
+            return readDashboardFile(headers, countdownFilename, validCountdown, 'countdown');
+        }
+
+        async function readDashboardFile(headers, filename, valid, label) {
             const options = { headers, cache: 'no-store' };
             const folderStep = 'OneDrive app folder';
             const root = await countdownFetch(folderStep, countdownDrive + 'special/approot', options);
@@ -1096,9 +1104,9 @@ async function loadTodo(headers, now) {
             if (!id) throw new CountdownConnectionError('OneDrive app folder ID missing');
 
             const parent = countdownDrive + 'items/' + encodeURIComponent(id);
-            const path = parent + ':/' + countdownFilename;
+            const path = parent + ':/' + filename;
             // Ask for the full drive item so OneDrive can include the download URL annotation.
-            const fileStep = 'OneDrive countdown file lookup';
+            const fileStep = 'OneDrive ' + label + ' file lookup';
             const item = await countdownFetch(fileStep, path, options);
             if (item.status === 404) return { path };
             if (!item.ok) throw await countdownGraphError(fileStep, item);
@@ -1106,15 +1114,15 @@ async function loadTodo(headers, now) {
             const downloadUrl = metadata?.['@microsoft.graph.downloadUrl'];
             if (typeof downloadUrl !== 'string' || !downloadUrl.startsWith('https://')
                 || !metadata.id || !metadata.eTag) {
-                throw new CountdownConnectionError('OneDrive did not provide downloadable countdown metadata');
+                throw new CountdownConnectionError('OneDrive did not provide download information for ' + label);
             }
 
-            const downloadStep = 'OneDrive countdown download';
+            const downloadStep = 'OneDrive ' + label + ' download';
             const download = await countdownFetch(downloadStep, downloadUrl, { credentials: 'omit',
                 cache: 'no-store', referrerPolicy: 'no-referrer' });
             if (!download.ok) throw await countdownGraphError(downloadStep, download);
             const value = await countdownJson(downloadStep, download);
-            if (!validCountdown(value)) throw new CountdownConnectionError('Invalid saved countdown');
+            if (!valid(value)) throw new CountdownConnectionError('Invalid saved ' + label);
             return { path, id: metadata.id, eTag: metadata.eTag, value };
         }
 
@@ -1143,7 +1151,36 @@ async function loadTodo(headers, now) {
             } finally {
                 countdownBusy = false;
                 updateCountdown();
+                if (interactive && countdownRemote && accountForRefresh?.homeAccountId === account.homeAccountId) {
+                    void syncActivityTotals();
+                }
             }
+        }
+
+        class DashboardFileConflict extends Error {}
+
+        async function writeDashboardFile(previous, value, token) {
+            const path = previous.id ? countdownDrive + 'items/' + encodeURIComponent(previous.id)
+                : previous.path + ':';
+            const headers = { ...token, 'Content-Type': 'application/json' };
+            if (previous.eTag) headers['If-Match'] = previous.eTag;
+            const session = await countdownFetch('OneDrive upload session', path + '/createUploadSession', {
+                method: 'POST', headers,
+                body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': previous.id ? 'replace' : 'fail' } })
+            });
+            if (session.status === 409 || session.status === 412) throw new DashboardFileConflict();
+            if (!session.ok) throw await countdownGraphError('OneDrive upload session', session);
+            const { uploadUrl } = await countdownJson('OneDrive upload session', session);
+            if (typeof uploadUrl !== 'string' || !uploadUrl.startsWith('https://')) {
+                throw new Error('Invalid OneDrive upload URL');
+            }
+            const bytes = new TextEncoder().encode(JSON.stringify(value));
+            const upload = await countdownFetch('OneDrive upload', uploadUrl, {
+                method: 'PUT', credentials: 'omit', referrerPolicy: 'no-referrer',
+                headers: { 'Content-Range': 'bytes 0-' + (bytes.length - 1) + '/' + bytes.length }, body: bytes
+            });
+            if (upload.status === 409 || upload.status === 412) throw new DashboardFileConflict();
+            if (![200, 201].includes(upload.status)) throw await countdownGraphError('OneDrive upload', upload);
         }
 
         async function saveSharedCountdown(value) {
@@ -1153,31 +1190,14 @@ async function loadTodo(headers, now) {
             updateCountdown();
             try {
                 const token = await countdownToken(account, false);
-                const path = previous.id ? countdownDrive + 'items/' + encodeURIComponent(previous.id)
-                    : previous.path + ':';
-                const headers = { ...token, 'Content-Type': 'application/json' };
-                if (previous.eTag) headers['If-Match'] = previous.eTag;
-                const session = await fetch(path + '/createUploadSession', {
-                    method: 'POST', headers, signal: AbortSignal.timeout(12000),
-                    body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': previous.id ? 'replace' : 'fail' } })
-                });
-                if ([409, 412].includes(session.status)) throw new Error('Countdown conflict');
-                if (!session.ok) throw new Error('Countdown sync session failed');
-                const url = new URL((await session.json()).uploadUrl);
-                if (url.protocol !== 'https:') throw new Error('Invalid countdown upload URL');
-                const bytes = new TextEncoder().encode(JSON.stringify(value));
-                const upload = await fetch(url, { method: 'PUT', credentials: 'omit', referrerPolicy: 'no-referrer',
-                    headers: { 'Content-Range': 'bytes 0-' + (bytes.length - 1) + '/' + bytes.length },
-                    body: bytes, signal: AbortSignal.timeout(12000) });
-                if ([409, 412].includes(upload.status)) throw new Error('Countdown conflict');
-                if (![200, 201].includes(upload.status)) throw new Error('Countdown upload incomplete');
+                await writeDashboardFile(previous, value, token);
                 const saved = await readCountdown(token);
                 if (accountForRefresh?.homeAccountId !== account.homeAccountId) return;
                 countdownRemote = saved;
                 countdownStatus.textContent = saved.value?.name === value.name && saved.value?.target === value.target
                     ? 'Saved to OneDrive.' : 'OneDrive changed. Showing the current shared countdown.';
             } catch (error) {
-                if (error.message === 'Countdown conflict') {
+                if (error instanceof DashboardFileConflict) {
                     countdownStatus.textContent = 'Another device changed the countdown. Refresh before editing.';
                     countdownRemote = undefined;
                 } else {
@@ -1434,6 +1454,73 @@ async function loadTodo(headers, now) {
         }
         document.getElementById('refreshActivities').addEventListener('click', refreshActivityTotals);
         refreshActivityTotals();
+        const activitySyncStatus = document.getElementById('activitySyncStatus');
+        const activitySources = [];
+        let activitySyncAccount;
+        let activitySyncRunning = false;
+        let activitySyncAgain = false;
+
+        function savedActivitySummary(key, valid) {
+            try {
+                const value = JSON.parse(localStorage.getItem(key));
+                return valid(value) ? value : null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function syncActivitySource(source, token, account) {
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const remote = await readDashboardFile(token, source.filename, source.valid, source.name + ' totals');
+                if (accountForRefresh?.homeAccountId !== account.homeAccountId) return false;
+                const local = savedActivitySummary(source.key, source.valid);
+                if (local && (!remote.value || Date.parse(local.generatedAt) > Date.parse(remote.value.generatedAt))) {
+                    try {
+                        await writeDashboardFile(remote, source.aggregate(local), token);
+                    } catch (error) {
+                        if (attempt === 0 && error instanceof DashboardFileConflict) continue;
+                        throw error;
+                    }
+                    if (accountForRefresh?.homeAccountId === account.homeAccountId) source.render(local);
+                    return true;
+                }
+                if (remote.value) source.render(remote.value);
+                return Boolean(remote.value);
+            }
+        }
+
+        async function syncActivityTotals() {
+            const account = accountForRefresh;
+            if (!account) return;
+            if (activitySyncRunning) {
+                activitySyncAgain = true;
+                return;
+            }
+            activitySyncAccount = account.homeAccountId;
+            activitySyncRunning = true;
+            try {
+                const token = await countdownToken(account, false);
+                const results = await Promise.allSettled(activitySources.map(source => syncActivitySource(source, token, account)));
+                if (accountForRefresh?.homeAccountId !== account.homeAccountId) return;
+                const failed = activitySources.filter((_, i) => results[i].status === 'rejected').map(source => source.name);
+                activitySyncStatus.textContent = failed.length
+                    ? 'Could not sync ' + failed.join(' and ') + ' with OneDrive. Reopen the dashboard to retry.'
+                    : results.some(result => result.value) ? 'Saved activity totals are synced with OneDrive.' : '';
+            } catch {
+                activitySyncStatus.textContent = 'Connect OneDrive with Sync countdown to sync saved activity totals.';
+            } finally {
+                activitySyncRunning = false;
+                if (activitySyncAgain) {
+                    activitySyncAgain = false;
+                    void syncActivityTotals();
+                }
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) void syncActivityTotals();
+        });
+
         // WinterFit shares aggregate totals only, after explicit approval in its signed-in window.
         (() => {
             const origin='https://winter-fit.mgchalmers.chatgpt.site',channel='murray-fitness-totals-v1';
@@ -1453,6 +1540,14 @@ async function loadTodo(headers, now) {
                 if(name!=='workouts')values[1].textContent=a.km===null?'—':a.km.toLocaleString(undefined,{maximumFractionDigits:2});
                 tiles[index].querySelector('.activity-source').textContent=name==='workouts'?'WinterFit · Saved strength sessions':'Garmin / Health Connect · WinterFit';
             }status.textContent='Shared '+new Date(s.generatedAt).toLocaleString()+'. '+s.coverage;}
+            activitySources.push({
+                name: 'WinterFit', filename: 'winterfit-totals.json', key, valid, render,
+                aggregate: ({ generatedAt, coverage, activities }) => ({
+                    schema: 1, generatedAt, coverage,
+                    activities: Object.fromEntries(Object.keys(positions).map(name => [name, name === 'workouts'
+                        ? { count: activities[name].count } : { count: activities[name].count, km: activities[name].km }]))
+                })
+            });
             for(const index of Object.values(positions))tiles[index].querySelector('.activity-source').textContent='WinterFit · Connection needed';
             try{const raw=localStorage.getItem(key);if(raw){const saved=JSON.parse(raw);if(valid(saved))render(saved);else status.textContent='Saved totals could not be read. Connect WinterFit to refresh; existing data has been kept.';}}catch{status.textContent='Saved totals unavailable. Connect WinterFit to load them.';}
             function finish(){if(pending)clearInterval(pending.timer);pending=null;connect.disabled=false;}
@@ -1471,6 +1566,7 @@ async function loadTodo(headers, now) {
                 if(!valid(m.summary)){finish();status.textContent='WinterFit returned unsupported totals. Existing totals have been kept.';return;}
                 finish();render(m.summary);
                 try{localStorage.setItem(key,JSON.stringify(m.summary));}catch{status.textContent+=' Totals could not be saved in this browser; reconnect after reloading.';}
+                void syncActivityTotals();
             });
         })();
         (()=>{
@@ -1480,6 +1576,10 @@ async function loadTodo(headers, now) {
             function valid(s){return s&&s.schema===1&&Number.isSafeInteger(s.count)&&s.count>=0&&typeof s.km==='number'&&Number.isFinite(s.km)&&s.km>=0&&typeof s.generatedAt==='string'&&Number.isFinite(Date.parse(s.generatedAt))&&typeof s.coverage==='string'&&s.coverage.length<2000;}
             function render(s){const values=tile.querySelectorAll('dd');values[0].textContent=s.count.toLocaleString();values[1].textContent=s.km.toLocaleString(undefined,{maximumFractionDigits:2});tile.querySelector('.activity-source').textContent='PaddleTrack · OC1 + OC6';status.textContent='Exported '+new Date(s.generatedAt).toLocaleString()+'. '+s.coverage;}
             function finish(){if(pending)clearInterval(pending.timer);pending=null;button.disabled=false;}
+            activitySources.push({
+                name: 'PaddleTrack', filename: 'paddletrack-totals.json', key, valid, render,
+                aggregate: ({ generatedAt, coverage, count, km }) => ({ schema: 1, generatedAt, coverage, count, km })
+            });
             try{const raw=localStorage.getItem(key);if(raw){const s=JSON.parse(raw);if(valid(s))render(s);}}catch{status.textContent='Saved paddle totals unavailable. Connect PaddleTrack to refresh.';}
             button.addEventListener('click',()=>{
                 if(pending)return;const popup=window.open(origin+'/dashboard-share.html','murray-paddle-totals');
@@ -1497,6 +1597,7 @@ async function loadTodo(headers, now) {
                 const receipt={popup:pending.popup,requestId:pending.requestId};
                 finish();render(m.summary);try{localStorage.setItem(key,JSON.stringify(m.summary));}catch{status.textContent+=' Browser save failed; reconnect after reloading.';}
                 lastReceipt=receipt;receipt.popup.postMessage({channel,type:'received',requestId:receipt.requestId},origin);
+                void syncActivityTotals();
             });
         })();
         document.addEventListener('DOMContentLoaded', startup);
