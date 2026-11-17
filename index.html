@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.1</title>
+    <title>Murray's Big Plan v1.11.2</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -393,7 +393,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.1 • Planning overview • Activity Totals
+        v1.11.2 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -474,6 +474,7 @@ const outlookBriefStatus = document.getElementById('outlookBriefStatus');
 const outlookBrief = document.getElementById('outlookBrief');
 const outlookBriefText = document.getElementById('outlookBriefText');
 let loadingOutlookBrief = false;
+let outlookBriefAccountId;
 const draftStatus = document.getElementById('draftStatus');
 const connectDrafts = document.getElementById('connectDrafts');
 let drafting = false;
@@ -542,6 +543,7 @@ async function loadDashboard(account, accessToken) {
         outlookBrief.hidden = true;
         outlookBriefText.textContent = '';
         outlookBriefStatus.textContent = '';
+        outlookBriefAccountId = undefined;
     }
     accountForRefresh = account;
     refreshing = true;
@@ -575,6 +577,9 @@ async function loadDashboard(account, accessToken) {
     } finally {
         refreshing = false;
         updateBriefingButtons();
+        if (accessToken && outlookBriefAccountId !== account.homeAccountId) {
+            void loadOutlookTestBrief(false);
+        }
     }
 }
 
@@ -582,11 +587,12 @@ refreshButton.addEventListener('click', () => loadDashboard(accountForRefresh));
 draftButton.addEventListener('click', () => saveBriefingDraft(false));
 connectDrafts.addEventListener('click', () => saveBriefingDraft(true));
 
-outlookBriefButton.addEventListener('click', loadOutlookTestBrief);
+outlookBriefButton.addEventListener('click', () => loadOutlookTestBrief(true));
 
-async function loadOutlookTestBrief() {
+async function loadOutlookTestBrief(interactive) {
     if (outlookBriefButton.disabled) return;
     const account = accountForRefresh;
+    outlookBriefAccountId = account.homeAccountId;
     loadingOutlookBrief = true;
     updateBriefingButtons();
     outlookBrief.hidden = true;
@@ -594,9 +600,17 @@ async function loadOutlookTestBrief() {
     outlookBriefStatus.textContent = 'Connecting to Outlook…';
 
     try {
-        const mail = await pca.acquireTokenPopup({
-            scopes: ['Mail.Read'], account, loginHint: account.username
-        });
+        const request = { scopes: ['Mail.Read'], account, loginHint: account.username };
+        let mail;
+        try {
+            mail = interactive ? await pca.acquireTokenPopup(request)
+                : await pca.acquireTokenSilent(request);
+        } catch {
+            outlookBriefStatus.textContent = interactive
+                ? 'Could not connect to Outlook. Allow the Microsoft sign-in window and try again.'
+                : 'Select Load Outlook brief to connect Outlook.';
+            return;
+        }
         if (mail.account?.homeAccountId !== account.homeAccountId) {
             outlookBriefStatus.textContent = 'Choose the same Microsoft account as the dashboard.';
             return;
@@ -638,7 +652,7 @@ async function loadOutlookTestBrief() {
         outlookBrief.hidden = false;
         outlookBriefStatus.textContent = 'Loaded from your Outlook Inbox.';
     } catch {
-        outlookBriefStatus.textContent = 'Could not load the Outlook brief. Allow the Microsoft sign-in window and try again.';
+        outlookBriefStatus.textContent = 'Could not read the Outlook brief. Select Load Outlook brief to retry.';
     } finally {
         loadingOutlookBrief = false;
         updateBriefingButtons();
