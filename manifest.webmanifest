@@ -1,0 +1,16 @@
+{
+  "id": "/murray-dashboard/",
+  "name": "Murray’s Dashboard",
+  "short_name": "Murray’s Dashboard",
+  "description": "Murray’s agenda, tasks, countdown and activity totals.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "./icons/dashboard-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/dashboard-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/dashboard-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

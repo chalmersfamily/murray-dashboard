@@ -4,7 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.6</title>
+    <title>Murray's Big Plan v1.12.0</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" type="image/png" href="./icons/dashboard-192.png">
+    <link rel="apple-touch-icon" href="./icons/dashboard-192.png">
+    <script defer src="./pwa.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -284,6 +289,7 @@
         <div class="dashboard-actions">
             <button id="signInButton" type="button" onclick="signIn()" disabled>Sign In</button>
             <button type="button" onclick="openSettings()">Settings</button>
+            <button id="installDashboard" type="button" hidden>Install app</button>
         </div>
     </header>
     <div id="status" class="subtitle">Initializing...</div>
@@ -398,7 +404,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.6 • Planning overview • Activity Totals
+        v1.12.0 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
