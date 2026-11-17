@@ -6,7 +6,7 @@ function fixture(blocked=false){
  const listeners={},elements={},tiles=Array.from({length:7},()=>{const dd=[{},{}],source={};return {dd,source,querySelectorAll:()=>dd,querySelector:()=>source};});
  const popup={closed:false,postMessage(){}},stored={};
  const get=id=>elements[id]||=( {addEventListener:(name,fn)=>listeners[id+name]=fn} );
- const ctx=vm.createContext({document:{getElementById:get,querySelectorAll:()=>tiles},window:{open:()=>blocked?null:popup,addEventListener:(name,fn)=>listeners[name]=fn},localStorage:{getItem:()=>null,setItem:(key,value)=>stored[key]=value},crypto:{randomUUID:()=> '12345678-1234-1234-1234-123456789abc'},setInterval:()=>1,clearInterval(){}});
+ const ctx=vm.createContext({activitySources:[],syncActivityTotals(){},document:{getElementById:get,querySelectorAll:()=>tiles},window:{open:()=>blocked?null:popup,addEventListener:(name,fn)=>listeners[name]=fn},localStorage:{getItem:()=>null,setItem:(key,value)=>stored[key]=value},crypto:{randomUUID:()=> '12345678-1234-1234-1234-123456789abc'},setInterval:()=>1,clearInterval(){}});
  vm.runInContext(code,ctx);
  return {listeners,elements,tiles,popup,stored};
 }
