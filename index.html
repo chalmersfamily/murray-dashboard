@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Murray's Big Plan v1.11.4</title>
+    <title>Murray's Big Plan v1.11.5</title>
     <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.25.1/lib/msal-browser.min.js"></script>
     <style>
         body {
@@ -397,7 +397,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.11.4 • Planning overview • Activity Totals
+        v1.11.5 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -1064,24 +1064,56 @@ async function loadTodo(headers, now) {
             return new CountdownConnectionError(step + ' (HTTP ' + response.status + detail + ')');
         }
 
+        async function countdownFetch(step, url, options) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 12000);
+                try {
+                    return await fetch(url, { ...options, signal: controller.signal });
+                } finally {
+                    clearTimeout(timer);
+                }
+            } catch (error) {
+                const reason = error?.name === 'AbortError' ? 'timed out' : 'request blocked or unreachable';
+                throw new CountdownConnectionError(step + ' (' + reason + ')');
+            }
+        }
+
+        async function countdownJson(step, response) {
+            try {
+                return await response.json();
+            } catch {
+                throw new CountdownConnectionError(step + ' returned unreadable data');
+            }
+        }
+
         async function readCountdown(headers) {
-            const options = { headers, cache: 'no-store', signal: AbortSignal.timeout(12000) };
-            const root = await fetch(countdownDrive + 'special/approot', options);
-            if (!root.ok) throw await countdownGraphError('OneDrive app folder', root);
-            const { id } = await root.json();
-            if (!id) throw new CountdownConnectionError('Countdown folder ID missing');
+            const options = { headers, cache: 'no-store' };
+            const folderStep = 'OneDrive app folder';
+            const root = await countdownFetch(folderStep, countdownDrive + 'special/approot', options);
+            if (!root.ok) throw await countdownGraphError(folderStep, root);
+            const { id } = await countdownJson(folderStep, root) ?? {};
+            if (!id) throw new CountdownConnectionError('OneDrive app folder ID missing');
+
             const parent = countdownDrive + 'items/' + encodeURIComponent(id);
             const path = parent + ':/' + countdownFilename;
-            const item = await fetch(path + '?$select=id,eTag,@microsoft.graph.downloadUrl', options);
+            // Ask for the full drive item so OneDrive can include the download URL annotation.
+            const fileStep = 'OneDrive countdown file lookup';
+            const item = await countdownFetch(fileStep, path, options);
             if (item.status === 404) return { path };
-            if (!item.ok) throw await countdownGraphError('OneDrive countdown file', item);
-            const metadata = await item.json();
-            const url = new URL(metadata['@microsoft.graph.downloadUrl']);
-            if (url.protocol !== 'https:' || !metadata.id || !metadata.eTag) throw new CountdownConnectionError('Invalid countdown metadata');
-            const download = await fetch(url, { credentials: 'omit', cache: 'no-store',
-                referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(12000) });
-            if (!download.ok) throw new CountdownConnectionError('Countdown download failed');
-            const value = await download.json();
+            if (!item.ok) throw await countdownGraphError(fileStep, item);
+            const metadata = await countdownJson(fileStep, item);
+            const downloadUrl = metadata?.['@microsoft.graph.downloadUrl'];
+            if (typeof downloadUrl !== 'string' || !downloadUrl.startsWith('https://')
+                || !metadata.id || !metadata.eTag) {
+                throw new CountdownConnectionError('OneDrive did not provide downloadable countdown metadata');
+            }
+
+            const downloadStep = 'OneDrive countdown download';
+            const download = await countdownFetch(downloadStep, downloadUrl, { credentials: 'omit',
+                cache: 'no-store', referrerPolicy: 'no-referrer' });
+            if (!download.ok) throw await countdownGraphError(downloadStep, download);
+            const value = await countdownJson(downloadStep, download);
             if (!validCountdown(value)) throw new CountdownConnectionError('Invalid saved countdown');
             return { path, id: metadata.id, eTag: metadata.eTag, value };
         }
