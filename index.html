@@ -280,6 +280,23 @@
         .remy-bar-track { height: 72px; display: flex; align-items: end; justify-content: center;
             border-bottom: 1px solid #64748b; margin: 5px 0; }
         .remy-bar { background: #7dd3fc; width: min(75%, 40px); border-radius: 4px 4px 0 0; }
+        #load-parked-projects {
+            min-height: 44px;
+            padding: 8px 15px;
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            background: #bae6fd;
+            color: #082f49;
+            font: inherit;
+            font-weight: 650;
+            cursor: pointer;
+        }
+        #load-parked-projects:hover { background: #e0f2fe; }
+        #load-parked-projects:focus-visible { outline: 2px solid #f8fafc; outline-offset: 3px; }
+        #parked-projects-list a:link, #parked-projects-list a:visited { color: #bae6fd; }
+        #parked-projects-list a:hover { color: #e0f2fe; }
+        #parked-projects-share { display: block; width: 100%; height: 7rem; border: 0; }
+        #parked-projects-share[hidden], #parked-projects-status:empty { display: none; }
     </style>
 </head>
 
@@ -318,6 +335,13 @@
         <p id="draftStatus" class="subtitle" role="status"></p>
         <div id="lastUpdated" class="subtitle"></div>
     </div>
+    <section class="card" aria-labelledby="parked-projects-title">
+        <h2 id="parked-projects-title">Parked Projects</h2>
+        <button id="load-parked-projects" type="button">Load pinned projects</button>
+        <p id="parked-projects-status" role="status">Pin projects in ProjectTrack to see their next actions here.</p>
+        <ul id="parked-projects-list" hidden></ul>
+        <iframe id="parked-projects-share" title="Share pinned projects from ProjectTrack" hidden></iframe>
+    </section>
     <div class="card next-event">
         <h2>Next Event</h2>
         <div id="nextEventCard">No events loaded.</div>
@@ -404,7 +428,7 @@
         <div id="ideasList" aria-label="Saved ideas"></div>
     </section>
     <div class="version">
-        v1.12.1 • Planning overview • Activity Totals
+        v1.12.2 • Planning overview • Activity Totals
         </div>
     <nav class="daily-apps" aria-label="Daily apps">
         <div class="daily-apps-inner">
@@ -1619,6 +1643,81 @@ async function loadTodo(headers, now) {
         })();
         document.addEventListener('DOMContentLoaded', startup);
         updateCountdown();
+
+
+{
+    const localPreview = location.origin === 'http://127.0.0.1:8989';
+    const trackerUrl = localPreview
+        ? 'http://127.0.0.1:8990/'
+        : 'https://mask-projecttrack.pages.dev/';
+    const trackerOrigin = new URL(trackerUrl).origin;
+    const button = document.getElementById('load-parked-projects');
+    const status = document.getElementById('parked-projects-status');
+    const list = document.getElementById('parked-projects-list');
+    const shareFrame = document.getElementById('parked-projects-share');
+    let request;
+    let shareWindow;
+
+    button.addEventListener('click', () => {
+        request = crypto.randomUUID();
+        const shareUrl = trackerUrl + '#parkedProjects=' + request;
+        if (!localPreview) {
+            shareWindow = window.open(shareUrl, 'parkedProjects', 'popup,width=520,height=420');
+            status.textContent = shareWindow
+                ? 'Confirm sharing in ProjectTrack.'
+                : 'Allow pop-ups for Murray’s Dashboard and try again.';
+            if (!shareWindow) request = null;
+            return;
+        }
+        shareFrame.src = shareUrl;
+        shareFrame.hidden = false;
+        status.textContent = '';
+        shareFrame.style.height = '';
+    });
+
+    window.addEventListener('message', event => {
+        const data = event.data;
+        if (!request || event.source !== (localPreview ? shareFrame.contentWindow : shareWindow) || event.origin !== trackerOrigin
+            || data?.request !== request) return;
+        if (data.type === 'projecttrack:parked-projects-height' && Number.isFinite(data.height)) {
+            shareFrame.style.height = Math.ceil(Math.min(1080, Math.max(52, data.height))) + 'px';
+            return;
+        }
+        if (data.type !== 'projecttrack:parked-projects' || !Array.isArray(data.pinned)) return;
+        request = null;
+        shareWindow = null;
+        shareFrame.hidden = true;
+        shareFrame.removeAttribute('src');
+        list.replaceChildren();
+
+        for (const project of data.pinned) {
+            if (typeof project?.id !== 'string' || typeof project.name !== 'string') continue;
+            const item = document.createElement('li');
+            const link = document.createElement('a');
+            const url = new URL(trackerUrl);
+            url.searchParams.set('project', project.id);
+            link.href = url.href;
+            link.textContent = project.name;
+            item.append(link);
+
+            for (const [label, value] of [['Next action', project.nextAction], ['Last checkpoint', project.checkpoint]]) {
+                if (typeof value !== 'string' || !value.trim()) continue;
+                const detail = document.createElement('p');
+                detail.textContent = label + ': ' + value;
+                item.append(detail);
+            }
+            if (typeof project.startUrl === 'string' && /^https?:\/\//i.test(project.startUrl)) {
+                const restart = document.createElement('a');
+                restart.href = project.startUrl;
+                restart.textContent = 'Start Here';
+                item.append(restart);
+            }
+            list.append(item);
+        }
+        list.hidden = !list.childElementCount;
+        status.textContent = list.hidden ? 'No pinned projects. Open a ProjectTrack card to pin it.' : '';
+    });
+}
     </script>
 </body>
 
